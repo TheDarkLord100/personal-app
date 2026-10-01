@@ -92,6 +92,17 @@ class SettingsScreen extends ConsumerWidget {
                     content: ref.read(exportActionsProvider).weightCsv(),
                   ),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.backup_outlined),
+                  title: const Text('Back up (JSON)'),
+                  subtitle: const Text('All data, for restoring later'),
+                  onTap: () => _saveFile(
+                    context,
+                    fileName: 'personal_trainer_backup_${dayKey(today)}.json',
+                    mimeType: 'application/json',
+                    content: ref.read(exportActionsProvider).backupJson(),
+                  ),
+                ),
               ],
             ),
           ),

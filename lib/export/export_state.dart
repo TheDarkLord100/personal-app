@@ -1,22 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/today_state.dart';
+import '../database/database_state.dart';
 import '../exercises/exercise_repository.dart';
 import '../exercises/exercises_state.dart';
 import '../sessions/session_repository.dart';
 import '../sessions/sessions_state.dart';
 import '../weight/weight_repository.dart';
 import '../weight/weight_state.dart';
+import 'backup_service.dart';
 import 'csv_exporter.dart' as csv;
+
+final backupServiceProvider = Provider<BackupService>(
+      (ref) => BackupService(ref.watch(appDatabaseProvider)),
+);
 
 /// Builds export file contents. Saving them is up to the UI.
 class ExportActions {
-  ExportActions(this._exercises, this._sessions, this._weight, this._today);
+  ExportActions(
+      this._exercises, this._sessions, this._weight, this._backup, this._today);
 
   final ExerciseRepository _exercises;
   final SessionRepository _sessions;
   final WeightRepository _weight;
+  final BackupService _backup;
   final DateTime _today;
+
+  Future<String> backupJson() => _backup.exportJson(now: DateTime.now());
 
   Future<String> sessionsCsv() async => csv.sessionsCsv(
     await _sessions.all(),
@@ -32,6 +42,7 @@ final exportActionsProvider = Provider<ExportActions>(
     ref.watch(exerciseRepositoryProvider),
     ref.watch(sessionRepositoryProvider),
     ref.watch(weightRepositoryProvider),
+    ref.watch(backupServiceProvider),
     ref.watch(todayProvider),
   ),
 );
