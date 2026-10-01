@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +10,7 @@ import '../core/format.dart';
 import '../core/today_state.dart';
 import '../database/app_database.dart';
 import '../exercises/exercises_state.dart';
+import '../export/export_state.dart';
 import '../schedule/schedule_state.dart';
 import 'widgets/backfill_sheet.dart';
 import 'widgets/schedule_rule_editor.dart';
@@ -67,11 +72,25 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () =>
                       showBackfillSheet(context, exercises: exercises),
                 ),
-                const ListTile(
-                  enabled: false,
-                  leading: Icon(Icons.ios_share),
-                  title: Text('Export and backup'),
-                  subtitle: Text('Coming soon'),
+                ListTile(
+                  leading: const Icon(Icons.table_view_outlined),
+                  title: const Text('Export sessions (CSV)'),
+                  onTap: () => _saveFile(
+                    context,
+                    fileName: 'sessions_${dayKey(today)}.csv',
+                    mimeType: 'text/csv',
+                    content: ref.read(exportActionsProvider).sessionsCsv(),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.monitor_weight_outlined),
+                  title: const Text('Export weight (CSV)'),
+                  onTap: () => _saveFile(
+                    context,
+                    fileName: 'weight_${dayKey(today)}.csv',
+                    mimeType: 'text/csv',
+                    content: ref.read(exportActionsProvider).weightCsv(),
+                  ),
                 ),
               ],
             ),
@@ -79,6 +98,29 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// Opens the system "Save to…" screen for [content], then reports the
+/// result. Cancelling saves nothing and shows nothing.
+Future<void> _saveFile(
+    BuildContext context, {
+      required String fileName,
+      required String mimeType,
+      required Future<String> content,
+    }) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final saved = await FilePicker.saveFile(
+      fileName: fileName,
+      bytes: Uint8List.fromList(utf8.encode(await content)),
+      mimeType: mimeType,
+    );
+    if (saved != null) {
+      messenger.showSnackBar(SnackBar(content: Text('Saved $fileName')));
+    }
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text('Couldn\'t save: $e')));
   }
 }
 
