@@ -24,6 +24,13 @@ void main() {
     expect(e.deadline, '2026-12-31');
   });
 
+  test('updateGoal can change the running goal', () async {
+    const running = 1;
+    await repo.updateGoal(running, goalRunning: 6);
+    final e = (await repo.getAll()).firstWhere((e) => e.id == running);
+    expect((e.goalTotal, e.goalRunning, e.goalContinuous), (8.0, 6.0, 2.0));
+  });
+
   test('a new exercise is added after the seeded ones', () async {
     await repo.add(
       name: 'Plank',

@@ -193,9 +193,11 @@ class _PlanRow extends StatelessWidget {
     final session = daySession.session;
     final unit = daySession.exercise.unit;
     final target =
-        describePair(session?.targetTotal, session?.targetContinuous, unit);
+        describeAmounts(session?.targetTotal, session?.targetContinuous, unit,
+            running: session?.targetRunning);
     final did =
-        describePair(session?.actualTotal, session?.actualContinuous, unit);
+        describeAmounts(session?.actualTotal, session?.actualContinuous, unit,
+            running: session?.actualRunning);
 
     return ListTile(
       title: Text(daySession.scheduled

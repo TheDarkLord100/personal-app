@@ -22,6 +22,7 @@ class GoalProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final running = progress.running;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -41,7 +42,14 @@ class GoalProgressCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _MetricProgressRow(
-                label: 'Total', metric: progress.total, unit: exercise.unit),
+                label: running == null ? 'Total' : 'Total (walk + run)',
+                metric: progress.total,
+                unit: exercise.unit),
+            if (running != null) ...[
+              const SizedBox(height: 16),
+              _MetricProgressRow(
+                  label: 'Running', metric: running, unit: exercise.unit),
+            ],
             const SizedBox(height: 16),
             _MetricProgressRow(
                 label: 'Continuous',

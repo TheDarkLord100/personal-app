@@ -53,7 +53,7 @@ lib/
   ui/         today_screen.dart, plan_screen.dart, progress_screen.dart, settings_screen.dart
   ui/widgets/ session_tile.dart, log_session_sheet.dart, weight_checkin_sheet.dart,
               schedule_rule_editor.dart, set_targets_sheet.dart, goal_progress_card.dart,
-              weight_progress_card.dart, backfill_sheet.dart, sheet_body.dart
+              weight_progress_card.dart, backfill_sheet.dart, amount_fields.dart, sheet_body.dart
 test/         mirrors lib/ (schedule, sessions, weight, exercises, progress, export)
 ```
 
@@ -73,19 +73,21 @@ test/         mirrors lib/ (schedule, sessions, weight, exercises, progress, exp
 - Numbers display via `core/format.dart` (`formatNumber`, `formatAmount`, `formatKg`).
 - Enums stored with `intEnum` (`ScheduleType`, `SessionStatus`): only append values, never reorder.
 - All bottom sheets wrap content in `SheetBody` (keeps clear of the system nav bar and keyboard).
+- Total / running / continuous inputs use `AmountFields`, and their order is checked with `amountOrderError` (continuous ≤ running ≤ total) — shared by the log, set-targets and goal sheets. Show amounts with `describeAmounts(total, continuous, unit, running: …)`.
+- An exercise uses running distance when `goalRunning != null`. "Is this day logged?" checks must include `actualRunning`.
 - Statuses always show icon + label, not color alone.
 
 ## Behaviour decisions (already agreed)
 
 - **Schedule** is computed from rules (every N days from a start date, or weekday mask); a session row exists only once a target is set or something is logged. Missed days don't shift the schedule. Alternating days = two every-2-days rules with start dates one day apart.
 - **Editing a rule** = end the old rule the day before the "applies from" date and add a new one, in a transaction (`replaceWith...`). Past days keep their old schedule. No past dates in pickers.
-- **Status**: override wins; nothing logged → missed if past, null (upcoming) if today/future; all zeros → missed; only set targets are compared; any short → partial; all met and at least one exceeded → overachieved; all met → done.
-- **Target suggestions** pre-fill (editable) only when a day has no targets: per metric, met/beat → step up from actual along a linear ramp to the goal by the deadline (min one increment: 0.1 km / 1 rep; hold at goal); fell short → repeat target. Continuous never exceeds total.
+- **Status**: override wins; nothing logged (none of total/running/continuous) → missed if past, null (upcoming) if today/future; all zeros → missed; only set targets are compared (running included); any short → partial; all met and at least one exceeded → overachieved; all met → done.
+- **Target suggestions** pre-fill (editable) only when a day has no targets: per metric, met/beat → step up from actual along a linear ramp to the goal by the deadline (min one increment: 0.1 km / 1 rep; hold at goal); fell short → repeat target. Running ramps toward its own goal. Order kept as continuous ≤ running ≤ total by raising the larger ones.
 - **"Set targets for next N sessions"** skips days already logged.
 - **Squats/push-ups** can be logged as sets ("40, 30, 25") → total = sum, continuous = max.
 - **Weight**: one reading per day (re-log replaces); trend uses a 7-calendar-day moving average; pace compares kg/week needed vs recent kg/week. On pace = recent moves toward the goal at least as fast as needed (works for gaining or losing); "At goal" when the average is within 0.5 kg of the goal.
 - **Backfill** (Settings → Data → Add past entry): pick exercise or weight and a day from 01/07/2026 to today, then the normal log / weight sheet opens on top (picker stays open, ‹ › step a day). Log sheet opens with `suggest: false` so past days don't get invented targets. Backfilling earlier sessions moves the goal cards' expected-line start.
-- **CSV export**: one row per *stored* session (days with a target or a log; untouched missed days aren't rows), oldest first; columns date (dd/mm/yyyy), exercise, target total/continuous, actual total/continuous, sets ("40, 30, 25"), status (computed as of today, override applied), note. Weight CSV: date, kg, note. RFC 4180 quoting, CRLF.
+- **CSV export**: one row per *stored* session (days with a target or a log; untouched missed days aren't rows), oldest first; columns date (dd/mm/yyyy), exercise, target total/running/continuous, actual total/running/continuous (running blank for squats/push-ups), sets ("40, 30, 25"), status (computed as of today, override applied), note. Weight CSV: date, kg, note. RFC 4180 quoting, CRLF.
 - **JSON backup**: header `app`, `formatVersion` (bump if the layout changes), `schemaVersion`, `exportedAt`, then every row of all four tables with ids (drift `toJson`). Read in one transaction.
 - **Restore** replaces everything (no merge): parse and validate the whole file first, confirm with counts, then one transaction deletes children-first and inserts parents-first; any failure rolls back. Backups from a newer format/schema are rejected, and so are backups from an *older* schema (no backup upgrades).
 - **Schema changes wipe data**: no data migrations. When `schemaVersion` goes up, `onUpgrade` drops all tables, recreates them and reseeds the goals (decided while there's no data worth keeping; revisit before relying on the app long-term). Schema 2 added the running columns (`goalRunning`, `targetRunning`, `actualRunning`; null for exercises without the metric).
@@ -93,7 +95,7 @@ test/         mirrors lib/ (schedule, sessions, weight, exercises, progress, exp
 
 ## Done
 
-Data layer, all repositories, pure logic, state layer (all with tests). UI: app shell with bottom nav and lifecycle refresh, Today screen, log sheet, weight check-in, Settings (schedule editor, goal editor), SheetBody used by every form sheet. Plan screen: Mon–Sun weeks, navigable into the past and future; rows show target, "Did" when logged, and status; week status count; tapping a row reuses `LogSessionSheet`; "Set targets" FAB opens `set_targets_sheet.dart` (next N sessions from today, replaces existing targets on those days). Progress screen: goal cards (best vs goal for total and continuous, progress bar, on track / behind / goal reached) and weight card (fl_chart readings + 7-day average + dashed goal line, needed vs recent pace with verdict). Backfill of past sessions and weight from Settings (`backfill_sheet.dart`). Settings → Data: sessions CSV, weight CSV, JSON backup and restore, all through the system save/open screens.
+Data layer, all repositories, pure logic, state layer (all with tests). UI: app shell with bottom nav and lifecycle refresh, Today screen, log sheet, weight check-in, Settings (schedule editor, goal editor), SheetBody used by every form sheet. Plan screen: Mon–Sun weeks, navigable into the past and future; rows show target, "Did" when logged, and status; week status count; tapping a row reuses `LogSessionSheet`; "Set targets" FAB opens `set_targets_sheet.dart` (next N sessions from today, replaces existing targets on those days). Progress screen: goal cards (best vs goal for total and continuous, progress bar, on track / behind / goal reached) and weight card (fl_chart readings + 7-day average + dashed goal line, needed vs recent pace with verdict). Backfill of past sessions and weight from Settings (`backfill_sheet.dart`). Settings → Data: sessions CSV, weight CSV, JSON backup and restore, all through the system save/open screens. Running distance (third metric) across data, logic and UI: two-row fields for Running, three progress rows on its goal card. Dark navy / neon cyan theme (dark only).
 
 ## Next
 

@@ -13,6 +13,7 @@ import '../exercises/exercises_state.dart';
 import '../export/backup_service.dart';
 import '../export/export_state.dart';
 import '../schedule/schedule_state.dart';
+import 'widgets/amount_fields.dart';
 import 'widgets/backfill_sheet.dart';
 import 'widgets/schedule_rule_editor.dart';
 import 'widgets/session_tile.dart';
@@ -50,7 +51,8 @@ class SettingsScreen extends ConsumerWidget {
                   ListTile(
                     title: Text(e.name),
                     subtitle: Text(
-                      '${describePair(e.goalTotal, e.goalContinuous, e.unit)}'
+                      '${describeAmounts(e.goalTotal, e.goalContinuous,
+                          e.unit, running: e.goalRunning)}'
                           ' by ${formatDayKey(e.deadline)}',
                     ),
                     trailing: const Icon(Icons.edit_outlined),
@@ -319,6 +321,10 @@ class _GoalSheetState extends ConsumerState<_GoalSheet> {
   TextEditingController(text: formatNumber(widget.exercise.goalTotal));
   late final _continuous = TextEditingController(
       text: formatNumber(widget.exercise.goalContinuous));
+  late final _running = TextEditingController(
+      text: widget.exercise.goalRunning == null
+          ? ''
+          : formatNumber(widget.exercise.goalRunning!));
   late DateTime _deadline = parseDay(widget.exercise.deadline);
   String? _error;
 
@@ -326,8 +332,11 @@ class _GoalSheetState extends ConsumerState<_GoalSheet> {
   void dispose() {
     _total.dispose();
     _continuous.dispose();
+    _running.dispose();
     super.dispose();
   }
+
+  bool get _hasRunning => widget.exercise.goalRunning != null;
 
   Future<void> _pickDeadline() async {
     final today = ref.read(todayProvider);
@@ -347,18 +356,24 @@ class _GoalSheetState extends ConsumerState<_GoalSheet> {
   Future<void> _save() async {
     final total = double.tryParse(_total.text.trim());
     final continuous = double.tryParse(_continuous.text.trim());
-    if (total == null || continuous == null || total <= 0 || continuous <= 0) {
-      setState(() => _error = 'Both goals must be numbers above 0.');
+    final running =
+    _hasRunning ? double.tryParse(_running.text.trim()) : null;
+    final values = [total, continuous, if (_hasRunning) running];
+    if (values.any((v) => v == null || v <= 0)) {
+      setState(() => _error = 'Every goal must be a number above 0.');
       return;
     }
-    if (continuous > total) {
-      setState(() => _error = 'Continuous can\'t be more than total.');
+    final orderError = amountOrderError(
+        total: total, running: running, continuous: continuous);
+    if (orderError != null) {
+      setState(() => _error = orderError);
       return;
     }
     await ref.read(exerciseRepositoryProvider).updateGoal(
       widget.exercise.id,
       goalTotal: total,
       goalContinuous: continuous,
+      goalRunning: running,
       deadline: _deadline,
     );
     if (mounted) Navigator.of(context).pop();
@@ -368,7 +383,6 @@ class _GoalSheetState extends ConsumerState<_GoalSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final unit = widget.exercise.unit;
-    final keyboard = TextInputType.numberWithOptions(decimal: unit == 'km');
 
     return SheetBody(
       child: Column(
@@ -380,26 +394,11 @@ class _GoalSheetState extends ConsumerState<_GoalSheet> {
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _total,
-                  keyboardType: keyboard,
-                  decoration:
-                  InputDecoration(labelText: 'Total', suffixText: unit),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _continuous,
-                  keyboardType: keyboard,
-                  decoration: InputDecoration(
-                      labelText: 'Continuous', suffixText: unit),
-                ),
-              ),
-            ],
+          AmountFields(
+            total: _total,
+            continuous: _continuous,
+            running: _hasRunning ? _running : null,
+            unit: unit,
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,

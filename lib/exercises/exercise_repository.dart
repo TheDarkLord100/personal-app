@@ -42,12 +42,14 @@ class ExerciseRepository {
       int id, {
         double? goalTotal,
         double? goalContinuous,
+        double? goalRunning,
         DateTime? deadline,
       }) =>
       (_db.update(_db.exercises)..where((e) => e.id.equals(id))).write(
         ExercisesCompanion(
           goalTotal: Value.absentIfNull(goalTotal),
           goalContinuous: Value.absentIfNull(goalContinuous),
+          goalRunning: Value.absentIfNull(goalRunning),
           deadline: Value.absentIfNull(
               deadline == null ? null : dayKey(deadline)),
         ),

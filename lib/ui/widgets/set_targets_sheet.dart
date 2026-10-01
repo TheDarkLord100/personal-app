@@ -5,6 +5,7 @@ import '../../core/dates.dart';
 import '../../core/today_state.dart';
 import '../../database/app_database.dart';
 import '../../sessions/sessions_state.dart';
+import 'amount_fields.dart';
 import 'sheet_body.dart';
 
 Future<void> showSetTargetsSheet(
@@ -34,6 +35,7 @@ class _SetTargetsSheetState extends ConsumerState<SetTargetsSheet> {
   int _count = 3;
   final _total = TextEditingController();
   final _continuous = TextEditingController();
+  final _running = TextEditingController();
   bool _saving = false;
   String? _error;
 
@@ -41,8 +43,11 @@ class _SetTargetsSheetState extends ConsumerState<SetTargetsSheet> {
   void dispose() {
     _total.dispose();
     _continuous.dispose();
+    _running.dispose();
     super.dispose();
   }
+
+  bool get _hasRunning => _exercise.goalRunning != null;
 
   double? _number(TextEditingController c, String field) {
     final text = c.text.trim();
@@ -57,15 +62,17 @@ class _SetTargetsSheetState extends ConsumerState<SetTargetsSheet> {
   Future<void> _save() async {
     final double? total;
     final double? continuous;
+    final double? running;
     try {
       total = _number(_total, 'Total');
       continuous = _number(_continuous, 'Continuous');
-      if (total == null && continuous == null) {
-        throw const FormatException('Enter a total, a continuous, or both.');
+      running = _hasRunning ? _number(_running, 'Running') : null;
+      if (total == null && continuous == null && running == null) {
+        throw const FormatException('Enter at least one target.');
       }
-      if (total != null && continuous != null && continuous > total) {
-        throw const FormatException('Continuous can\'t be more than total.');
-      }
+      final orderError = amountOrderError(
+          total: total, running: running, continuous: continuous);
+      if (orderError != null) throw FormatException(orderError);
     } on FormatException catch (e) {
       setState(() => _error = e.message);
       return;
@@ -86,6 +93,7 @@ class _SetTargetsSheetState extends ConsumerState<SetTargetsSheet> {
         count: _count,
         total: total,
         continuous: continuous,
+        running: running,
       );
       navigator.pop();
       messenger.showSnackBar(SnackBar(
@@ -106,7 +114,6 @@ class _SetTargetsSheetState extends ConsumerState<SetTargetsSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final unit = _exercise.unit;
-    final keyboard = TextInputType.numberWithOptions(decimal: unit == 'km');
 
     return SheetBody(
       child: Column(
@@ -151,26 +158,11 @@ class _SetTargetsSheetState extends ConsumerState<SetTargetsSheet> {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _total,
-                  keyboardType: keyboard,
-                  decoration:
-                  InputDecoration(labelText: 'Total', suffixText: unit),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _continuous,
-                  keyboardType: keyboard,
-                  decoration: InputDecoration(
-                      labelText: 'Continuous', suffixText: unit),
-                ),
-              ),
-            ],
+          AmountFields(
+            total: _total,
+            continuous: _continuous,
+            running: _hasRunning ? _running : null,
+            unit: unit,
           ),
           const SizedBox(height: 8),
           Text(

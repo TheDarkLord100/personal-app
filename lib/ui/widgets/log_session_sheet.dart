@@ -8,6 +8,7 @@ import '../../database/tables.dart';
 import '../../sessions/session_repository.dart';
 import '../../sessions/sessions_state.dart';
 import '../../sessions/target_suggestion.dart';
+import 'amount_fields.dart';
 import 'session_tile.dart';
 import 'sheet_body.dart';
 
@@ -30,8 +31,10 @@ Future<void> showLogSessionSheet(
 typedef _Parsed = ({
 double? targetTotal,
 double? targetContinuous,
+double? targetRunning,
 double? actualTotal,
 double? actualContinuous,
+double? actualRunning,
 List<num>? sets,
 });
 
@@ -59,8 +62,10 @@ class LogSessionSheet extends ConsumerStatefulWidget {
 class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
   final _targetTotal = TextEditingController();
   final _targetContinuous = TextEditingController();
+  final _targetRunning = TextEditingController();
   final _actualTotal = TextEditingController();
   final _actualContinuous = TextEditingController();
+  final _actualRunning = TextEditingController();
   final _sets = TextEditingController();
   final _note = TextEditingController();
 
@@ -71,9 +76,12 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
 
   bool get _usesSets => widget.exercise.unit == 'reps';
 
+  bool get _hasRunning => widget.exercise.goalRunning != null;
+
   bool get _wasLogged =>
       widget.session?.actualTotal != null ||
-          widget.session?.actualContinuous != null;
+          widget.session?.actualContinuous != null ||
+          widget.session?.actualRunning != null;
 
   @override
   void initState() {
@@ -81,8 +89,10 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
     final s = widget.session;
     _targetTotal.text = _fmt(s?.targetTotal);
     _targetContinuous.text = _fmt(s?.targetContinuous);
+    _targetRunning.text = _fmt(s?.targetRunning);
     _actualTotal.text = _fmt(s?.actualTotal);
     _actualContinuous.text = _fmt(s?.actualContinuous);
+    _actualRunning.text = _fmt(s?.actualRunning);
     if (s != null && s.setList.isNotEmpty) {
       _sets.text = s.setList.map(formatNumber).join(', ');
     }
@@ -92,7 +102,8 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
 
     if (widget.suggest &&
         s?.targetTotal == null &&
-        s?.targetContinuous == null) {
+        s?.targetContinuous == null &&
+        s?.targetRunning == null) {
       ref.listenManual(
         targetSuggestionProvider((widget.exercise.id, widget.date)),
             (_, next) => _applySuggestion(next.value),
@@ -104,8 +115,8 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
   @override
   void dispose() {
     for (final c in [
-      _targetTotal, _targetContinuous, _actualTotal,
-      _actualContinuous, _sets, _note,
+      _targetTotal, _targetContinuous, _targetRunning, _actualTotal,
+      _actualContinuous, _actualRunning, _sets, _note,
     ]) {
       c.dispose();
     }
@@ -115,11 +126,14 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
   void _applySuggestion(TargetSuggestion? suggestion) {
     if (suggestion == null || _suggested) return;
     // Don't overwrite anything typed before the suggestion arrived.
-    if (_targetTotal.text.isNotEmpty || _targetContinuous.text.isNotEmpty) {
+    if (_targetTotal.text.isNotEmpty ||
+        _targetContinuous.text.isNotEmpty ||
+        _targetRunning.text.isNotEmpty) {
       return;
     }
     _targetTotal.text = _fmt(suggestion.total);
     _targetContinuous.text = _fmt(suggestion.continuous);
+    _targetRunning.text = _fmt(suggestion.running);
     _suggested = true;
     if (mounted) setState(() {});
   }
@@ -156,34 +170,40 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
     try {
       final targetTotal = _number(_targetTotal, 'Target total');
       final targetContinuous = _number(_targetContinuous, 'Target continuous');
+      final targetRunning =
+      _hasRunning ? _number(_targetRunning, 'Target running') : null;
       final sets = _usesSets ? _parseSets() : null;
 
       var actualTotal = _number(_actualTotal, 'Total');
       var actualContinuous = _number(_actualContinuous, 'Continuous');
+      final actualRunning =
+      _hasRunning ? _number(_actualRunning, 'Running') : null;
       if (sets != null) {
         final t = totalsFromSets(sets);
         actualTotal = t.total;
         actualContinuous = t.continuous;
       }
 
-      if (targetTotal != null &&
-          targetContinuous != null &&
-          targetContinuous > targetTotal) {
-        throw const FormatException(
-            'Target continuous can\'t be more than target total.');
-      }
-      if (actualTotal != null &&
-          actualContinuous != null &&
-          actualContinuous > actualTotal) {
-        throw const FormatException(
-            'Continuous can\'t be more than total.');
-      }
+      final orderError = amountOrderError(
+        total: targetTotal,
+        running: targetRunning,
+        continuous: targetContinuous,
+        target: true,
+      ) ??
+          amountOrderError(
+            total: actualTotal,
+            running: actualRunning,
+            continuous: actualContinuous,
+          );
+      if (orderError != null) throw FormatException(orderError);
 
       return (
       targetTotal: targetTotal,
       targetContinuous: targetContinuous,
+      targetRunning: targetRunning,
       actualTotal: actualTotal,
       actualContinuous: actualContinuous,
+      actualRunning: actualRunning,
       sets: sets,
       );
     } on FormatException catch (e) {
@@ -216,15 +236,20 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
     final id = widget.exercise.id;
     final day = widget.date;
     final note = _note.text.trim();
-    final hasLog = p.actualTotal != null || p.actualContinuous != null;
+    final hasLog = p.actualTotal != null ||
+        p.actualContinuous != null ||
+        p.actualRunning != null;
 
     try {
       await actions.setTargets(id, day,
-          total: p.targetTotal, continuous: p.targetContinuous);
+          total: p.targetTotal,
+          continuous: p.targetContinuous,
+          running: p.targetRunning);
       if (hasLog || note.isNotEmpty) {
         await actions.log(id, day,
             total: p.actualTotal,
             continuous: p.actualContinuous,
+            running: p.actualRunning,
             sets: p.sets,
             note: note);
       } else if (_wasLogged) {
@@ -264,7 +289,12 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 20),
           _SectionLabel('Target', note: _suggested ? 'Suggested' : null),
-          _pairFields(_targetTotal, _targetContinuous, unit),
+          AmountFields(
+            total: _targetTotal,
+            continuous: _targetContinuous,
+            running: _hasRunning ? _targetRunning : null,
+            unit: unit,
+          ),
           const SizedBox(height: 20),
           const _SectionLabel('What you did'),
           if (_usesSets) ...[
@@ -279,7 +309,12 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
             const SizedBox(height: 12),
           ],
           if (!usingSets) ...[
-            _pairFields(_actualTotal, _actualContinuous, unit),
+            AmountFields(
+              total: _actualTotal,
+              continuous: _actualContinuous,
+              running: _hasRunning ? _actualRunning : null,
+              unit: unit,
+            ),
             const SizedBox(height: 12),
           ],
           TextField(
@@ -321,35 +356,6 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _pairFields(
-      TextEditingController total,
-      TextEditingController continuous,
-      String unit,
-      ) {
-    final keyboard = TextInputType.numberWithOptions(decimal: unit == 'km');
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: total,
-            keyboardType: keyboard,
-            decoration:
-            InputDecoration(labelText: 'Total', suffixText: unit),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: TextField(
-            controller: continuous,
-            keyboardType: keyboard,
-            decoration:
-            InputDecoration(labelText: 'Continuous', suffixText: unit),
-          ),
-        ),
-      ],
     );
   }
 }

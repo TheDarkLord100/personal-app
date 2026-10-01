@@ -31,10 +31,17 @@ Color statusColor(BuildContext context, SessionStatus? status) {
   };
 }
 
-/// "3 km total, 1 km continuous", or null when both are missing.
-String? describePair(double? total, double? continuous, String unit) {
+/// "6 km total, 4 km running, 1.5 km continuous", leaving out missing
+/// ones; null when all are missing.
+String? describeAmounts(
+    double? total,
+    double? continuous,
+    String unit, {
+      double? running,
+    }) {
   final parts = [
     if (total != null) '${formatAmount(total, unit)} total',
+    if (running != null) '${formatAmount(running, unit)} running',
     if (continuous != null) '${formatAmount(continuous, unit)} continuous',
   ];
   return parts.isEmpty ? null : parts.join(', ');
@@ -81,15 +88,17 @@ class SessionTile extends StatelessWidget {
               const SizedBox(height: 12),
               _MetricRow(
                 label: 'Target',
-                text: describePair(
-                    session?.targetTotal, session?.targetContinuous, unit) ??
+                text: describeAmounts(
+                    session?.targetTotal, session?.targetContinuous, unit,
+                    running: session?.targetRunning) ??
                     'Not set',
               ),
               const SizedBox(height: 4),
               _MetricRow(
                 label: 'Did',
-                text: describePair(
-                    session?.actualTotal, session?.actualContinuous, unit) ??
+                text: describeAmounts(
+                    session?.actualTotal, session?.actualContinuous, unit,
+                    running: session?.actualRunning) ??
                     'Not logged',
               ),
               if (session?.note != null) ...[
