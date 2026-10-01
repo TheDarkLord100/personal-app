@@ -32,7 +32,8 @@ flutter run
 
 - drift (SQLite) via drift_flutter
 - flutter_riverpod 3.x — use Notifier/AsyncNotifier style, not legacy StateProvider/StateNotifier
-- Planned: fl_chart (charts), csv + share_plus (export)
+- fl_chart 1.x (charts; `SideTitleWidget` takes `meta:`)
+- Planned: csv + share_plus (export)
 
 ## Structure
 
@@ -51,7 +52,8 @@ lib/
   export/     csv_exporter.dart, backup_service.dart     (not built yet)
   ui/         today_screen.dart, plan_screen.dart, progress_screen.dart, settings_screen.dart
   ui/widgets/ session_tile.dart, log_session_sheet.dart, weight_checkin_sheet.dart,
-              schedule_rule_editor.dart, set_targets_sheet.dart, goal_progress_card.dart, sheet_body.dart
+              schedule_rule_editor.dart, set_targets_sheet.dart, goal_progress_card.dart,
+              weight_progress_card.dart, sheet_body.dart
 test/         mirrors lib/ (schedule, sessions, weight, exercises, progress)
 ```
 
@@ -81,14 +83,14 @@ test/         mirrors lib/ (schedule, sessions, weight, exercises, progress)
 - **Target suggestions** pre-fill (editable) only when a day has no targets: per metric, met/beat → step up from actual along a linear ramp to the goal by the deadline (min one increment: 0.1 km / 1 rep; hold at goal); fell short → repeat target. Continuous never exceeds total.
 - **"Set targets for next N sessions"** skips days already logged.
 - **Squats/push-ups** can be logged as sets ("40, 30, 25") → total = sum, continuous = max.
-- **Weight**: one reading per day (re-log replaces); trend uses a 7-calendar-day moving average; pace compares kg/week needed vs recent kg/week.
+- **Weight**: one reading per day (re-log replaces); trend uses a 7-calendar-day moving average; pace compares kg/week needed vs recent kg/week. On pace = recent moves toward the goal at least as fast as needed (works for gaining or losing); "At goal" when the average is within 0.5 kg of the goal.
+- **Weight chart** shows all history; x-axis is calendar days (gaps stay gaps); y-axis always includes the goal line.
 
 ## Done
 
-Data layer, all repositories, pure logic, state layer (all with tests). UI: app shell with bottom nav and lifecycle refresh, Today screen, log sheet, weight check-in, Settings (schedule editor, goal editor), SheetBody used by every form sheet. Plan screen: Mon–Sun weeks, navigable into the past and future; rows show target, "Did" when logged, and status; week status count; tapping a row reuses `LogSessionSheet`; "Set targets" FAB opens `set_targets_sheet.dart` (next N sessions from today, replaces existing targets on those days).
+Data layer, all repositories, pure logic, state layer (all with tests). UI: app shell with bottom nav and lifecycle refresh, Today screen, log sheet, weight check-in, Settings (schedule editor, goal editor), SheetBody used by every form sheet. Plan screen: Mon–Sun weeks, navigable into the past and future; rows show target, "Did" when logged, and status; week status count; tapping a row reuses `LogSessionSheet`; "Set targets" FAB opens `set_targets_sheet.dart` (next N sessions from today, replaces existing targets on those days). Progress screen: goal cards (best vs goal for total and continuous, progress bar, on track / behind / goal reached) and weight card (fl_chart readings + 7-day average + dashed goal line, needed vs recent pace with verdict).
 
 ## Next
 
-1. **Progress screen**: per-goal cards (best, % of goal, on track vs expected line) and weight chart with 7-day average and needed vs recent pace (`goal_progress_card.dart`, fl_chart). Its app bar title currently says "Plan" by mistake.
-2. **Export & backup** (Settings → Data): CSV with one row per session, dates as dd/mm/yyyy (date, exercise, target total/continuous, actual total/continuous, sets, status, note) plus weight CSV; JSON backup + restore. Share via share_plus.
-3. Later/optional: editable weight goal (small settings table), archived exercises, daily reminder notification, a targets-only mode of `LogSessionSheet` for future days.
+1. **Export & backup** (Settings → Data): CSV with one row per session, dates as dd/mm/yyyy (date, exercise, target total/continuous, actual total/continuous, sets, status, note) plus weight CSV; JSON backup + restore. Share via share_plus.
+2. Later/optional: editable weight goal (small settings table), archived exercises, daily reminder notification, a targets-only mode of `LogSessionSheet` for future days.

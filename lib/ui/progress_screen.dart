@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../progress/progress_state.dart';
 import 'widgets/goal_progress_card.dart';
+import 'widgets/weight_progress_card.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -29,6 +30,7 @@ class ProgressScreen extends ConsumerWidget {
             ),
             error: (e, _) => Text('Couldn\'t load progress: $e'),
           ),
+          const WeightProgressCard(),
         ],
       ),
     );
