@@ -23,10 +23,10 @@ IconData statusIcon(SessionStatus? status) => switch (status) {
 Color statusColor(BuildContext context, SessionStatus? status) {
   final scheme = Theme.of(context).colorScheme;
   return switch (status) {
-    null => scheme.outline,
+    null => scheme.onSurfaceVariant,
     SessionStatus.missed => scheme.error,
-    SessionStatus.partial => const Color(0xFFB7791F),
-    SessionStatus.done => const Color(0xFF2F855A),
+    SessionStatus.partial => const Color(0xFFFBBF24),
+    SessionStatus.done => const Color(0xFF34D399),
     SessionStatus.overachieved => scheme.primary,
   };
 }

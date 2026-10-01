@@ -162,7 +162,7 @@ class _DaySection extends StatelessWidget {
           Text(
             isToday ? '${formatShortDate(day)} · Today' : formatShortDate(day),
             style: theme.textTheme.titleSmall?.copyWith(
-                color: isToday ? theme.colorScheme.primary : null),
+                color: isToday ? theme.colorScheme.secondary : null),
           ),
           const SizedBox(height: 8),
           if (sessions.isEmpty)
