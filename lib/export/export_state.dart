@@ -15,7 +15,8 @@ final backupServiceProvider = Provider<BackupService>(
       (ref) => BackupService(ref.watch(appDatabaseProvider)),
 );
 
-/// Builds export file contents. Saving them is up to the UI.
+/// Builds export file contents and restores backups. Saving and picking
+/// files is up to the UI.
 class ExportActions {
   ExportActions(
       this._exercises, this._sessions, this._weight, this._backup, this._today);
@@ -27,6 +28,12 @@ class ExportActions {
   final DateTime _today;
 
   Future<String> backupJson() => _backup.exportJson(now: DateTime.now());
+
+  /// Throws [FormatException] with a readable message for a bad file.
+  BackupData readBackup(String text) => _backup.parse(text);
+
+  /// Replaces all data. Streams update the UI on their own afterwards.
+  Future<void> restore(BackupData data) => _backup.restore(data);
 
   Future<String> sessionsCsv() async => csv.sessionsCsv(
     await _sessions.all(),

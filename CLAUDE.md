@@ -33,7 +33,7 @@ flutter run
 - drift (SQLite) via drift_flutter
 - flutter_riverpod 3.x — use Notifier/AsyncNotifier style, not legacy StateProvider/StateNotifier
 - fl_chart 1.x (charts; `SideTitleWidget` takes `meta:`)
-- Planned: csv + share_plus (export)
+- file_picker 13.x (static `FilePicker.saveFile` / `FilePicker.pickFiles`; system save/open screens, no storage permissions). No sharing, by choice. CSV is hand-written (no csv package).
 
 ## Structure
 
@@ -49,20 +49,20 @@ lib/
   sessions/   session_repository.dart, session_status.dart (pure), target_suggestion.dart (pure), sessions_state.dart
   weight/     weight_repository.dart, weight_state.dart
   progress/   progress_calculator.dart (pure), progress_state.dart
-  export/     csv_exporter.dart, backup_service.dart     (not built yet)
+  export/     csv_exporter.dart (pure), backup_service.dart, export_state.dart
   ui/         today_screen.dart, plan_screen.dart, progress_screen.dart, settings_screen.dart
   ui/widgets/ session_tile.dart, log_session_sheet.dart, weight_checkin_sheet.dart,
               schedule_rule_editor.dart, set_targets_sheet.dart, goal_progress_card.dart,
               weight_progress_card.dart, backfill_sheet.dart, sheet_body.dart
-test/         mirrors lib/ (schedule, sessions, weight, exercises, progress)
+test/         mirrors lib/ (schedule, sessions, weight, exercises, progress, export)
 ```
 
 ## Architecture rules
 
 - Dependency direction: ui → *_state → repositories + pure logic → database.
 - Screens never touch drift directly.
-- Pure logic files (schedule_engine, session_status, target_suggestion, progress_calculator) have no Flutter or database calls and are unit-tested.
-- Reactivity comes from drift `watch()` streams wrapped in StreamProviders. Writes go through action classes (`SessionActions`, `ScheduleActions`); streams update the UI automatically.
+- Pure logic files (schedule_engine, session_status, target_suggestion, progress_calculator, csv_exporter) have no Flutter or database calls and are unit-tested.
+- Reactivity comes from drift `watch()` streams wrapped in StreamProviders. Writes go through action classes (`SessionActions`, `ScheduleActions`, `ExportActions`); streams update the UI automatically.
 - Future providers: do all `ref.watch` calls before the first `await`.
 - UI uses `asyncValue.when(...)` (not `switch` on AsyncData) to avoid flicker on refresh.
 - Repositories are tested against `AppDatabase(NativeDatabase.memory())`; actions via `ProviderContainer` with `appDatabaseProvider.overrideWithValue(db)`.
@@ -85,13 +85,17 @@ test/         mirrors lib/ (schedule, sessions, weight, exercises, progress)
 - **Squats/push-ups** can be logged as sets ("40, 30, 25") → total = sum, continuous = max.
 - **Weight**: one reading per day (re-log replaces); trend uses a 7-calendar-day moving average; pace compares kg/week needed vs recent kg/week. On pace = recent moves toward the goal at least as fast as needed (works for gaining or losing); "At goal" when the average is within 0.5 kg of the goal.
 - **Backfill** (Settings → Data → Add past entry): pick exercise or weight and a day from 01/07/2026 to today, then the normal log / weight sheet opens on top (picker stays open, ‹ › step a day). Log sheet opens with `suggest: false` so past days don't get invented targets. Backfilling earlier sessions moves the goal cards' expected-line start.
+- **CSV export**: one row per *stored* session (days with a target or a log; untouched missed days aren't rows), oldest first; columns date (dd/mm/yyyy), exercise, target total/continuous, actual total/continuous, sets ("40, 30, 25"), status (computed as of today, override applied), note. Weight CSV: date, kg, note. RFC 4180 quoting, CRLF.
+- **JSON backup**: header `app`, `formatVersion` (bump if the layout changes), `schemaVersion`, `exportedAt`, then every row of all four tables with ids (drift `toJson`). Read in one transaction.
+- **Restore** replaces everything (no merge): parse and validate the whole file first, confirm with counts, then one transaction deletes children-first and inserts parents-first; any failure rolls back. Backups from a newer format/schema are rejected. **If `schemaVersion` ever goes above 1, restore must upgrade older backups** — today it accepts them as-is.
 - **Weight chart** shows all history; x-axis is calendar days (gaps stay gaps); y-axis always includes the goal line.
 
 ## Done
 
-Data layer, all repositories, pure logic, state layer (all with tests). UI: app shell with bottom nav and lifecycle refresh, Today screen, log sheet, weight check-in, Settings (schedule editor, goal editor), SheetBody used by every form sheet. Plan screen: Mon–Sun weeks, navigable into the past and future; rows show target, "Did" when logged, and status; week status count; tapping a row reuses `LogSessionSheet`; "Set targets" FAB opens `set_targets_sheet.dart` (next N sessions from today, replaces existing targets on those days). Progress screen: goal cards (best vs goal for total and continuous, progress bar, on track / behind / goal reached) and weight card (fl_chart readings + 7-day average + dashed goal line, needed vs recent pace with verdict). Backfill of past sessions and weight from Settings (`backfill_sheet.dart`).
+Data layer, all repositories, pure logic, state layer (all with tests). UI: app shell with bottom nav and lifecycle refresh, Today screen, log sheet, weight check-in, Settings (schedule editor, goal editor), SheetBody used by every form sheet. Plan screen: Mon–Sun weeks, navigable into the past and future; rows show target, "Did" when logged, and status; week status count; tapping a row reuses `LogSessionSheet`; "Set targets" FAB opens `set_targets_sheet.dart` (next N sessions from today, replaces existing targets on those days). Progress screen: goal cards (best vs goal for total and continuous, progress bar, on track / behind / goal reached) and weight card (fl_chart readings + 7-day average + dashed goal line, needed vs recent pace with verdict). Backfill of past sessions and weight from Settings (`backfill_sheet.dart`). Settings → Data: sessions CSV, weight CSV, JSON backup and restore, all through the system save/open screens.
 
 ## Next
 
-1. **Export & backup** (Settings → Data): CSV with one row per session, dates as dd/mm/yyyy (date, exercise, target total/continuous, actual total/continuous, sets, status, note) plus weight CSV; JSON backup + restore. Share via share_plus.
-2. Later/optional: editable weight goal (small settings table), archived exercises, daily reminder notification, a targets-only mode of `LogSessionSheet` for future days.
+All planned features are built. UI screens and sheets have no widget tests and need checking on a device.
+
+Later/optional (not a priority): editable weight goal (small settings table), adding/archiving exercises, daily reminder notification, a targets-only mode of `LogSessionSheet` for future days.

@@ -54,6 +54,23 @@ class BackupService {
     });
   }
 
+  /// Replaces everything in the database with [data], in one transaction:
+  /// if any row fails, nothing changes.
+  Future<void> restore(BackupData data) => _db.transaction(() async {
+    // Children before parents: foreign keys are on.
+    await _db.delete(_db.sessions).go();
+    await _db.delete(_db.scheduleRules).go();
+    await _db.delete(_db.weightEntries).go();
+    await _db.delete(_db.exercises).go();
+
+    await _db.batch((b) {
+      b.insertAll(_db.exercises, data.exercises);
+      b.insertAll(_db.scheduleRules, data.scheduleRules);
+      b.insertAll(_db.sessions, data.sessions);
+      b.insertAll(_db.weightEntries, data.weightEntries);
+    });
+  });
+
   /// Reads and checks a backup file completely, without touching the
   /// database. Throws [FormatException] with a readable message if the
   /// file isn't a backup this version of the app can restore.

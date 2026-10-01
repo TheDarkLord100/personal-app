@@ -10,6 +10,7 @@ import '../core/format.dart';
 import '../core/today_state.dart';
 import '../database/app_database.dart';
 import '../exercises/exercises_state.dart';
+import '../export/backup_service.dart';
 import '../export/export_state.dart';
 import '../schedule/schedule_state.dart';
 import 'widgets/backfill_sheet.dart';
@@ -103,6 +104,12 @@ class SettingsScreen extends ConsumerWidget {
                     content: ref.read(exportActionsProvider).backupJson(),
                   ),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.settings_backup_restore),
+                  title: const Text('Restore from backup'),
+                  subtitle: const Text('Replaces all data in the app'),
+                  onTap: () => _restore(context, ref),
+                ),
               ],
             ),
           ),
@@ -132,6 +139,84 @@ Future<void> _saveFile(
     }
   } catch (e) {
     messenger.showSnackBar(SnackBar(content: Text('Couldn\'t save: $e')));
+  }
+}
+
+/// Picks a backup file, checks all of it, asks for confirmation, then
+/// replaces all data. Nothing changes until the user confirms.
+Future<void> _restore(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final actions = ref.read(exportActionsProvider);
+  try {
+    // Any file type: Android's JSON filter misses files from some apps
+    // (e.g. Drive), and readBackup rejects anything that isn't a backup.
+    final picked = await FilePicker.pickFiles(dialogTitle: 'Choose a backup');
+    if (picked.isEmpty) return;
+    final data =
+    actions.readBackup(utf8.decode(await picked.first.readAsBytes()));
+
+    if (!context.mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _RestoreDialog(data),
+    );
+    if (confirmed != true) return;
+
+    await actions.restore(data);
+    messenger.showSnackBar(SnackBar(
+        content: Text('Restored backup from ${_backupTime(data)}')));
+  } on FormatException catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(e.message)));
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text('Couldn\'t restore: $e')));
+  }
+}
+
+/// e.g. "01/10/2026 09:30", or "an unknown date" for an odd timestamp.
+String _backupTime(BackupData data) {
+  final t = DateTime.tryParse(data.exportedAt);
+  if (t == null) return 'an unknown date';
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${formatDate(t)} ${two(t.hour)}:${two(t.minute)}';
+}
+
+class _RestoreDialog extends StatelessWidget {
+  const _RestoreDialog(this.data);
+
+  final BackupData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    String count(int n, String one, String many) => '$n ${n == 1 ? one : many}';
+
+    return AlertDialog(
+      icon: const Icon(Icons.warning_amber_rounded),
+      title: const Text('Replace all data?'),
+      content: Text(
+        'Backup from ${_backupTime(data)}:\n'
+            '${count(data.exercises.length, 'exercise', 'exercises')}, '
+            '${count(data.scheduleRules.length, 'schedule rule', 'schedule rules')}, '
+            '${count(data.sessions.length, 'session', 'sessions')}, '
+            '${count(data.weightEntries.length, 'weight reading', 'weight readings')}.\n\n'
+            'Everything currently in the app will be replaced. '
+            'Back up first if you might want it.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: scheme.error,
+            foregroundColor: scheme.onError,
+          ),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Replace'),
+        ),
+      ],
+    );
   }
 }
 

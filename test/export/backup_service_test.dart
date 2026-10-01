@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_trainer/database/app_database.dart';
@@ -15,6 +16,9 @@ const squats = 2;
 DateTime d(int month, int day) => DateTime(2026, month, day);
 
 void main() {
+  // The restore tests open a second, separate in-memory database on purpose.
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+
   late AppDatabase db;
   late BackupService service;
 
@@ -60,6 +64,73 @@ void main() {
     expect(map['formatVersion'], backupFormatVersion);
     expect(map['schemaVersion'], db.schemaVersion);
     expect(map['exportedAt'], '2026-10-01T09:30:00.000');
+  });
+
+  group('restore', () {
+    late AppDatabase other;
+    late BackupService otherService;
+
+    setUp(() {
+      other = AppDatabase(NativeDatabase.memory());
+      otherService = BackupService(other);
+    });
+
+    tearDown(() => other.close());
+
+    test('replaces everything with the backup', () async {
+      await addSomeData();
+      final backup = service.parse(
+          await service.exportJson(now: DateTime(2026, 10, 1)));
+
+      // Different data in the target, all of which should go.
+      await WeightRepository(other).log(d(8, 1), 95);
+      await SessionRepository(other)
+          .logActuals(running, d(8, 1), total: 1);
+
+      await otherService.restore(backup);
+
+      expect(await other.select(other.exercises).get(), backup.exercises);
+      expect(await other.select(other.scheduleRules).get(),
+          backup.scheduleRules);
+      expect(await other.select(other.sessions).get(), backup.sessions);
+      expect(await other.select(other.weightEntries).get(),
+          backup.weightEntries);
+    });
+
+    test('new rows after a restore get fresh ids', () async {
+      await addSomeData();
+      final backup = service.parse(
+          await service.exportJson(now: DateTime(2026, 10, 1)));
+      await otherService.restore(backup);
+
+      await SessionRepository(other).setTargets(running, d(9, 10), total: 3);
+
+      final ids = (await other.select(other.sessions).get()).map((s) => s.id);
+      expect(ids.toSet(), hasLength(3));
+    });
+
+    test('a failing restore leaves the data untouched', () async {
+      await addSomeData();
+      final before = await db.select(db.sessions).get();
+      final backup = service.parse(
+          await service.exportJson(now: DateTime(2026, 10, 1)));
+
+      // A session pointing at an exercise that isn't in the backup.
+      final broken = BackupData(
+        schemaVersion: backup.schemaVersion,
+        exportedAt: backup.exportedAt,
+        exercises: backup.exercises,
+        scheduleRules: backup.scheduleRules,
+        sessions: [
+          const Session(id: 50, exerciseId: 99, date: '2026-09-09'),
+        ],
+        weightEntries: backup.weightEntries,
+      );
+
+      await expectLater(service.restore(broken), throwsA(anything));
+      expect(await db.select(db.sessions).get(), before);
+      expect(await db.select(db.exercises).get(), hasLength(3));
+    });
   });
 
   group('parse rejects', () {
