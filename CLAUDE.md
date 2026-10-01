@@ -53,7 +53,7 @@ lib/
   ui/         today_screen.dart, plan_screen.dart, progress_screen.dart, settings_screen.dart
   ui/widgets/ session_tile.dart, log_session_sheet.dart, weight_checkin_sheet.dart,
               schedule_rule_editor.dart, set_targets_sheet.dart, goal_progress_card.dart,
-              weight_progress_card.dart, sheet_body.dart
+              weight_progress_card.dart, backfill_sheet.dart, sheet_body.dart
 test/         mirrors lib/ (schedule, sessions, weight, exercises, progress)
 ```
 
@@ -84,11 +84,12 @@ test/         mirrors lib/ (schedule, sessions, weight, exercises, progress)
 - **"Set targets for next N sessions"** skips days already logged.
 - **Squats/push-ups** can be logged as sets ("40, 30, 25") → total = sum, continuous = max.
 - **Weight**: one reading per day (re-log replaces); trend uses a 7-calendar-day moving average; pace compares kg/week needed vs recent kg/week. On pace = recent moves toward the goal at least as fast as needed (works for gaining or losing); "At goal" when the average is within 0.5 kg of the goal.
+- **Backfill** (Settings → Data → Add past entry): pick exercise or weight and a day from 01/07/2026 to today, then the normal log / weight sheet opens on top (picker stays open, ‹ › step a day). Log sheet opens with `suggest: false` so past days don't get invented targets. Backfilling earlier sessions moves the goal cards' expected-line start.
 - **Weight chart** shows all history; x-axis is calendar days (gaps stay gaps); y-axis always includes the goal line.
 
 ## Done
 
-Data layer, all repositories, pure logic, state layer (all with tests). UI: app shell with bottom nav and lifecycle refresh, Today screen, log sheet, weight check-in, Settings (schedule editor, goal editor), SheetBody used by every form sheet. Plan screen: Mon–Sun weeks, navigable into the past and future; rows show target, "Did" when logged, and status; week status count; tapping a row reuses `LogSessionSheet`; "Set targets" FAB opens `set_targets_sheet.dart` (next N sessions from today, replaces existing targets on those days). Progress screen: goal cards (best vs goal for total and continuous, progress bar, on track / behind / goal reached) and weight card (fl_chart readings + 7-day average + dashed goal line, needed vs recent pace with verdict).
+Data layer, all repositories, pure logic, state layer (all with tests). UI: app shell with bottom nav and lifecycle refresh, Today screen, log sheet, weight check-in, Settings (schedule editor, goal editor), SheetBody used by every form sheet. Plan screen: Mon–Sun weeks, navigable into the past and future; rows show target, "Did" when logged, and status; week status count; tapping a row reuses `LogSessionSheet`; "Set targets" FAB opens `set_targets_sheet.dart` (next N sessions from today, replaces existing targets on those days). Progress screen: goal cards (best vs goal for total and continuous, progress bar, on track / behind / goal reached) and weight card (fl_chart readings + 7-day average + dashed goal line, needed vs recent pace with verdict). Backfill of past sessions and weight from Settings (`backfill_sheet.dart`).
 
 ## Next
 

@@ -7,6 +7,7 @@ import '../core/today_state.dart';
 import '../database/app_database.dart';
 import '../exercises/exercises_state.dart';
 import '../schedule/schedule_state.dart';
+import 'widgets/backfill_sheet.dart';
 import 'widgets/schedule_rule_editor.dart';
 import 'widgets/session_tile.dart';
 import 'widgets/sheet_body.dart';
@@ -54,12 +55,25 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           const _SectionHeader('Data'),
-          const Card(
-            child: ListTile(
-              enabled: false,
-              leading: Icon(Icons.ios_share),
-              title: Text('Export and backup'),
-              subtitle: Text('Coming soon'),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text('Add past entry'),
+                  subtitle: const Text('Backfill sessions or weight'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () =>
+                      showBackfillSheet(context, exercises: exercises),
+                ),
+                const ListTile(
+                  enabled: false,
+                  leading: Icon(Icons.ios_share),
+                  title: Text('Export and backup'),
+                  subtitle: Text('Coming soon'),
+                ),
+              ],
             ),
           ),
         ],

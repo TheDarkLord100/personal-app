@@ -16,14 +16,15 @@ Future<void> showLogSessionSheet(
       required Exercise exercise,
       required DateTime date,
       Session? session,
+      bool suggest = true,
     }) =>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (_) =>
-          LogSessionSheet(exercise: exercise, date: date, session: session),
+      builder: (_) => LogSessionSheet(
+          exercise: exercise, date: date, session: session, suggest: suggest),
     );
 
 typedef _Parsed = ({
@@ -40,11 +41,16 @@ class LogSessionSheet extends ConsumerStatefulWidget {
     required this.exercise,
     required this.date,
     this.session,
+    this.suggest = true,
   });
 
   final Exercise exercise;
   final DateTime date;
   final Session? session;
+
+  /// Pre-fill suggested targets when the day has none. Off for backfilling,
+  /// so past days don't get targets that were never set.
+  final bool suggest;
 
   @override
   ConsumerState<LogSessionSheet> createState() => _LogSessionSheetState();
@@ -84,7 +90,9 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
     _override = s?.statusOverride;
     _sets.addListener(() => setState(() {}));
 
-    if (s?.targetTotal == null && s?.targetContinuous == null) {
+    if (widget.suggest &&
+        s?.targetTotal == null &&
+        s?.targetContinuous == null) {
       ref.listenManual(
         targetSuggestionProvider((widget.exercise.id, widget.date)),
             (_, next) => _applySuggestion(next.value),
