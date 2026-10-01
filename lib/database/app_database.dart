@@ -12,11 +12,19 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'goal_tracker'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
+      await m.createAll();
+      await _seedGoals();
+    },
+    onUpgrade: (m, from, to) async {
+      // No data migrations: an older database is wiped and starts fresh.
+      for (final table in allTables.toList().reversed) {
+        await m.deleteTable(table.actualTableName);
+      }
       await m.createAll();
       await _seedGoals();
     },
@@ -31,8 +39,9 @@ class AppDatabase extends _$AppDatabase {
         ExercisesCompanion.insert(
           name: 'Running',
           unit: 'km',
-          goalTotal: 5,
+          goalTotal: 8, // walking + running
           goalContinuous: 2,
+          goalRunning: const Value(5),
           deadline: goalDeadline,
         ),
         ExercisesCompanion.insert(

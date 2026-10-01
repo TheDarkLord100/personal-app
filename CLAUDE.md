@@ -4,9 +4,9 @@ Personal Flutter app (Android, phone-only storage) for planning, logging and exp
 
 ## Goals (seeded in the database)
 
-Every exercise has two numbers: **total** and **best continuous**.
+Every exercise has two numbers: **total** and **best continuous**. Running has a third, **running** (distance actually run): total = walking + running, and continuous ≤ running ≤ total.
 
-- Running: 5 km total, 2 km continuous
+- Running: 8 km total (walk + run), 5 km running, 2 km continuous
 - Squats: 1000 total, 200 continuous
 - Push-ups: 200 total, 50 continuous
 - Body weight: 85 kg (daily check-in; currently a constant in `core/constants.dart`)
@@ -87,7 +87,8 @@ test/         mirrors lib/ (schedule, sessions, weight, exercises, progress, exp
 - **Backfill** (Settings → Data → Add past entry): pick exercise or weight and a day from 01/07/2026 to today, then the normal log / weight sheet opens on top (picker stays open, ‹ › step a day). Log sheet opens with `suggest: false` so past days don't get invented targets. Backfilling earlier sessions moves the goal cards' expected-line start.
 - **CSV export**: one row per *stored* session (days with a target or a log; untouched missed days aren't rows), oldest first; columns date (dd/mm/yyyy), exercise, target total/continuous, actual total/continuous, sets ("40, 30, 25"), status (computed as of today, override applied), note. Weight CSV: date, kg, note. RFC 4180 quoting, CRLF.
 - **JSON backup**: header `app`, `formatVersion` (bump if the layout changes), `schemaVersion`, `exportedAt`, then every row of all four tables with ids (drift `toJson`). Read in one transaction.
-- **Restore** replaces everything (no merge): parse and validate the whole file first, confirm with counts, then one transaction deletes children-first and inserts parents-first; any failure rolls back. Backups from a newer format/schema are rejected. **If `schemaVersion` ever goes above 1, restore must upgrade older backups** — today it accepts them as-is.
+- **Restore** replaces everything (no merge): parse and validate the whole file first, confirm with counts, then one transaction deletes children-first and inserts parents-first; any failure rolls back. Backups from a newer format/schema are rejected, and so are backups from an *older* schema (no backup upgrades).
+- **Schema changes wipe data**: no data migrations. When `schemaVersion` goes up, `onUpgrade` drops all tables, recreates them and reseeds the goals (decided while there's no data worth keeping; revisit before relying on the app long-term). Schema 2 added the running columns (`goalRunning`, `targetRunning`, `actualRunning`; null for exercises without the metric).
 - **Weight chart** shows all history; x-axis is calendar days (gaps stay gaps); y-axis always includes the goal line.
 
 ## Done

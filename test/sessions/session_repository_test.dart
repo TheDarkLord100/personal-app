@@ -115,4 +115,35 @@ void main() {
     final inRange = await repo.watchBetween(d(10, 1), d(10, 10)).first;
     expect(inRange.map((s) => s.date), ['2026-10-02', '2026-10-09']);
   });
+
+  group('running distance', () {
+    test('targets and actuals are stored alongside the other two', () async {
+      await repo.setTargets(running, d(10, 5),
+          total: 6, running: 4, continuous: 1.5);
+      await repo.logActuals(running, d(10, 5),
+          total: 6.5, running: 4.2, continuous: 2);
+
+      final s = (await repo.find(running, d(10, 5)))!;
+      expect((s.targetTotal, s.targetRunning, s.targetContinuous),
+          (6.0, 4.0, 1.5));
+      expect((s.actualTotal, s.actualRunning, s.actualContinuous),
+          (6.5, 4.2, 2.0));
+    });
+
+    test('clearLog clears running too but keeps the running target', () async {
+      await repo.setTargets(running, d(10, 5), total: 6, running: 4);
+      await repo.logActuals(running, d(10, 5), total: 6, running: 4);
+      await repo.clearLog(running, d(10, 5));
+
+      final s = (await repo.find(running, d(10, 5)))!;
+      expect(s.actualRunning, isNull);
+      expect(s.targetRunning, 4);
+    });
+
+    test('recentLogged counts a day with only running logged', () async {
+      await repo.logActuals(running, d(10, 1), running: 2);
+      final recent = await repo.recentLogged(running, before: d(10, 7));
+      expect(recent.map((s) => s.date), ['2026-10-01']);
+    });
+  });
 }

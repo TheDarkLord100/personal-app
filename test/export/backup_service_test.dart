@@ -159,6 +159,13 @@ void main() {
           'This backup was made by a newer version of the app.');
     });
 
+    test('an older database schema', () async {
+      final map = await validBackup()..['schemaVersion'] = db.schemaVersion - 1;
+      expectRejected(jsonEncode(map),
+          'This backup is from an older version of the app and can\'t be '
+          'restored.');
+    });
+
     test('a newer database schema', () async {
       final map = await validBackup()..['schemaVersion'] = db.schemaVersion + 1;
       expectRejected(jsonEncode(map),

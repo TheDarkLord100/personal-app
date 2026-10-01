@@ -10,6 +10,9 @@ class Exercises extends Table {
   TextColumn get unit => text()(); // 'km' or 'reps'
   RealColumn get goalTotal => real()();
   RealColumn get goalContinuous => real()();
+  // Only for exercises with a third metric (Running: distance actually run,
+  // between total and continuous). Null = the exercise doesn't use it.
+  RealColumn get goalRunning => real().nullable()(); // added in schema 2
   TextColumn get deadline => text()(); // yyyy-MM-dd
 }
 
@@ -36,6 +39,8 @@ class Sessions extends Table {
   RealColumn get targetContinuous => real().nullable()();
   RealColumn get actualTotal => real().nullable()();
   RealColumn get actualContinuous => real().nullable()();
+  RealColumn get targetRunning => real().nullable()(); // added in schema 2
+  RealColumn get actualRunning => real().nullable()(); // added in schema 2
   TextColumn get sets => text().nullable()(); // JSON, e.g. "[40,30,25]"
   TextColumn get note => text().nullable()();
   IntColumn get statusOverride => intEnum<SessionStatus>().nullable()();

@@ -95,6 +95,12 @@ class BackupService {
       throw const FormatException(
           'This backup was made by a newer version of the app.');
     }
+    // No upgrades for old backups, matching the database (see onUpgrade).
+    if (schema < _db.schemaVersion) {
+      throw const FormatException(
+          'This backup is from an older version of the app and can\'t be '
+          'restored.');
+    }
 
     try {
       List<T> rows<T>(String key, T Function(Map<String, dynamic>) fromJson) =>

@@ -62,6 +62,17 @@ class $ExercisesTable extends Exercises
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _goalRunningMeta = const VerificationMeta(
+    'goalRunning',
+  );
+  @override
+  late final GeneratedColumn<double> goalRunning = GeneratedColumn<double>(
+    'goal_running',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _deadlineMeta = const VerificationMeta(
     'deadline',
   );
@@ -80,6 +91,7 @@ class $ExercisesTable extends Exercises
     unit,
     goalTotal,
     goalContinuous,
+    goalRunning,
     deadline,
   ];
   @override
@@ -132,6 +144,15 @@ class $ExercisesTable extends Exercises
     } else if (isInserting) {
       context.missing(_goalContinuousMeta);
     }
+    if (data.containsKey('goal_running')) {
+      context.handle(
+        _goalRunningMeta,
+        goalRunning.isAcceptableOrUnknown(
+          data['goal_running']!,
+          _goalRunningMeta,
+        ),
+      );
+    }
     if (data.containsKey('deadline')) {
       context.handle(
         _deadlineMeta,
@@ -169,6 +190,10 @@ class $ExercisesTable extends Exercises
         DriftSqlType.double,
         data['${effectivePrefix}goal_continuous'],
       )!,
+      goalRunning: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}goal_running'],
+      ),
       deadline: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}deadline'],
@@ -188,6 +213,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
   final String unit;
   final double goalTotal;
   final double goalContinuous;
+  final double? goalRunning;
   final String deadline;
   const Exercise({
     required this.id,
@@ -195,6 +221,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     required this.unit,
     required this.goalTotal,
     required this.goalContinuous,
+    this.goalRunning,
     required this.deadline,
   });
   @override
@@ -205,6 +232,9 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     map['unit'] = Variable<String>(unit);
     map['goal_total'] = Variable<double>(goalTotal);
     map['goal_continuous'] = Variable<double>(goalContinuous);
+    if (!nullToAbsent || goalRunning != null) {
+      map['goal_running'] = Variable<double>(goalRunning);
+    }
     map['deadline'] = Variable<String>(deadline);
     return map;
   }
@@ -216,6 +246,9 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       unit: Value(unit),
       goalTotal: Value(goalTotal),
       goalContinuous: Value(goalContinuous),
+      goalRunning: goalRunning == null && nullToAbsent
+          ? const Value.absent()
+          : Value(goalRunning),
       deadline: Value(deadline),
     );
   }
@@ -231,6 +264,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       unit: serializer.fromJson<String>(json['unit']),
       goalTotal: serializer.fromJson<double>(json['goalTotal']),
       goalContinuous: serializer.fromJson<double>(json['goalContinuous']),
+      goalRunning: serializer.fromJson<double?>(json['goalRunning']),
       deadline: serializer.fromJson<String>(json['deadline']),
     );
   }
@@ -243,6 +277,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       'unit': serializer.toJson<String>(unit),
       'goalTotal': serializer.toJson<double>(goalTotal),
       'goalContinuous': serializer.toJson<double>(goalContinuous),
+      'goalRunning': serializer.toJson<double?>(goalRunning),
       'deadline': serializer.toJson<String>(deadline),
     };
   }
@@ -253,6 +288,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     String? unit,
     double? goalTotal,
     double? goalContinuous,
+    Value<double?> goalRunning = const Value.absent(),
     String? deadline,
   }) => Exercise(
     id: id ?? this.id,
@@ -260,6 +296,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     unit: unit ?? this.unit,
     goalTotal: goalTotal ?? this.goalTotal,
     goalContinuous: goalContinuous ?? this.goalContinuous,
+    goalRunning: goalRunning.present ? goalRunning.value : this.goalRunning,
     deadline: deadline ?? this.deadline,
   );
   Exercise copyWithCompanion(ExercisesCompanion data) {
@@ -271,6 +308,9 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       goalContinuous: data.goalContinuous.present
           ? data.goalContinuous.value
           : this.goalContinuous,
+      goalRunning: data.goalRunning.present
+          ? data.goalRunning.value
+          : this.goalRunning,
       deadline: data.deadline.present ? data.deadline.value : this.deadline,
     );
   }
@@ -283,14 +323,22 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           ..write('unit: $unit, ')
           ..write('goalTotal: $goalTotal, ')
           ..write('goalContinuous: $goalContinuous, ')
+          ..write('goalRunning: $goalRunning, ')
           ..write('deadline: $deadline')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, unit, goalTotal, goalContinuous, deadline);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    unit,
+    goalTotal,
+    goalContinuous,
+    goalRunning,
+    deadline,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -300,6 +348,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           other.unit == this.unit &&
           other.goalTotal == this.goalTotal &&
           other.goalContinuous == this.goalContinuous &&
+          other.goalRunning == this.goalRunning &&
           other.deadline == this.deadline);
 }
 
@@ -309,6 +358,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
   final Value<String> unit;
   final Value<double> goalTotal;
   final Value<double> goalContinuous;
+  final Value<double?> goalRunning;
   final Value<String> deadline;
   const ExercisesCompanion({
     this.id = const Value.absent(),
@@ -316,6 +366,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     this.unit = const Value.absent(),
     this.goalTotal = const Value.absent(),
     this.goalContinuous = const Value.absent(),
+    this.goalRunning = const Value.absent(),
     this.deadline = const Value.absent(),
   });
   ExercisesCompanion.insert({
@@ -324,6 +375,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     required String unit,
     required double goalTotal,
     required double goalContinuous,
+    this.goalRunning = const Value.absent(),
     required String deadline,
   }) : name = Value(name),
        unit = Value(unit),
@@ -336,6 +388,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Expression<String>? unit,
     Expression<double>? goalTotal,
     Expression<double>? goalContinuous,
+    Expression<double>? goalRunning,
     Expression<String>? deadline,
   }) {
     return RawValuesInsertable({
@@ -344,6 +397,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
       if (unit != null) 'unit': unit,
       if (goalTotal != null) 'goal_total': goalTotal,
       if (goalContinuous != null) 'goal_continuous': goalContinuous,
+      if (goalRunning != null) 'goal_running': goalRunning,
       if (deadline != null) 'deadline': deadline,
     });
   }
@@ -354,6 +408,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Value<String>? unit,
     Value<double>? goalTotal,
     Value<double>? goalContinuous,
+    Value<double?>? goalRunning,
     Value<String>? deadline,
   }) {
     return ExercisesCompanion(
@@ -362,6 +417,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
       unit: unit ?? this.unit,
       goalTotal: goalTotal ?? this.goalTotal,
       goalContinuous: goalContinuous ?? this.goalContinuous,
+      goalRunning: goalRunning ?? this.goalRunning,
       deadline: deadline ?? this.deadline,
     );
   }
@@ -384,6 +440,9 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     if (goalContinuous.present) {
       map['goal_continuous'] = Variable<double>(goalContinuous.value);
     }
+    if (goalRunning.present) {
+      map['goal_running'] = Variable<double>(goalRunning.value);
+    }
     if (deadline.present) {
       map['deadline'] = Variable<String>(deadline.value);
     }
@@ -398,6 +457,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
           ..write('unit: $unit, ')
           ..write('goalTotal: $goalTotal, ')
           ..write('goalContinuous: $goalContinuous, ')
+          ..write('goalRunning: $goalRunning, ')
           ..write('deadline: $deadline')
           ..write(')'))
         .toString();
@@ -966,6 +1026,28 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _targetRunningMeta = const VerificationMeta(
+    'targetRunning',
+  );
+  @override
+  late final GeneratedColumn<double> targetRunning = GeneratedColumn<double>(
+    'target_running',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _actualRunningMeta = const VerificationMeta(
+    'actualRunning',
+  );
+  @override
+  late final GeneratedColumn<double> actualRunning = GeneratedColumn<double>(
+    'actual_running',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _setsMeta = const VerificationMeta('sets');
   @override
   late final GeneratedColumn<String> sets = GeneratedColumn<String>(
@@ -1002,6 +1084,8 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     targetContinuous,
     actualTotal,
     actualContinuous,
+    targetRunning,
+    actualRunning,
     sets,
     note,
     statusOverride,
@@ -1073,6 +1157,24 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         ),
       );
     }
+    if (data.containsKey('target_running')) {
+      context.handle(
+        _targetRunningMeta,
+        targetRunning.isAcceptableOrUnknown(
+          data['target_running']!,
+          _targetRunningMeta,
+        ),
+      );
+    }
+    if (data.containsKey('actual_running')) {
+      context.handle(
+        _actualRunningMeta,
+        actualRunning.isAcceptableOrUnknown(
+          data['actual_running']!,
+          _actualRunningMeta,
+        ),
+      );
+    }
     if (data.containsKey('sets')) {
       context.handle(
         _setsMeta,
@@ -1122,6 +1224,14 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         DriftSqlType.double,
         data['${effectivePrefix}actual_continuous'],
       ),
+      targetRunning: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}target_running'],
+      ),
+      actualRunning: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}actual_running'],
+      ),
       sets: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}sets'],
@@ -1160,6 +1270,8 @@ class Session extends DataClass implements Insertable<Session> {
   final double? targetContinuous;
   final double? actualTotal;
   final double? actualContinuous;
+  final double? targetRunning;
+  final double? actualRunning;
   final String? sets;
   final String? note;
   final SessionStatus? statusOverride;
@@ -1171,6 +1283,8 @@ class Session extends DataClass implements Insertable<Session> {
     this.targetContinuous,
     this.actualTotal,
     this.actualContinuous,
+    this.targetRunning,
+    this.actualRunning,
     this.sets,
     this.note,
     this.statusOverride,
@@ -1192,6 +1306,12 @@ class Session extends DataClass implements Insertable<Session> {
     }
     if (!nullToAbsent || actualContinuous != null) {
       map['actual_continuous'] = Variable<double>(actualContinuous);
+    }
+    if (!nullToAbsent || targetRunning != null) {
+      map['target_running'] = Variable<double>(targetRunning);
+    }
+    if (!nullToAbsent || actualRunning != null) {
+      map['actual_running'] = Variable<double>(actualRunning);
     }
     if (!nullToAbsent || sets != null) {
       map['sets'] = Variable<String>(sets);
@@ -1224,6 +1344,12 @@ class Session extends DataClass implements Insertable<Session> {
       actualContinuous: actualContinuous == null && nullToAbsent
           ? const Value.absent()
           : Value(actualContinuous),
+      targetRunning: targetRunning == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetRunning),
+      actualRunning: actualRunning == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actualRunning),
       sets: sets == null && nullToAbsent ? const Value.absent() : Value(sets),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       statusOverride: statusOverride == null && nullToAbsent
@@ -1245,6 +1371,8 @@ class Session extends DataClass implements Insertable<Session> {
       targetContinuous: serializer.fromJson<double?>(json['targetContinuous']),
       actualTotal: serializer.fromJson<double?>(json['actualTotal']),
       actualContinuous: serializer.fromJson<double?>(json['actualContinuous']),
+      targetRunning: serializer.fromJson<double?>(json['targetRunning']),
+      actualRunning: serializer.fromJson<double?>(json['actualRunning']),
       sets: serializer.fromJson<String?>(json['sets']),
       note: serializer.fromJson<String?>(json['note']),
       statusOverride: $SessionsTable.$converterstatusOverriden.fromJson(
@@ -1263,6 +1391,8 @@ class Session extends DataClass implements Insertable<Session> {
       'targetContinuous': serializer.toJson<double?>(targetContinuous),
       'actualTotal': serializer.toJson<double?>(actualTotal),
       'actualContinuous': serializer.toJson<double?>(actualContinuous),
+      'targetRunning': serializer.toJson<double?>(targetRunning),
+      'actualRunning': serializer.toJson<double?>(actualRunning),
       'sets': serializer.toJson<String?>(sets),
       'note': serializer.toJson<String?>(note),
       'statusOverride': serializer.toJson<int?>(
@@ -1279,6 +1409,8 @@ class Session extends DataClass implements Insertable<Session> {
     Value<double?> targetContinuous = const Value.absent(),
     Value<double?> actualTotal = const Value.absent(),
     Value<double?> actualContinuous = const Value.absent(),
+    Value<double?> targetRunning = const Value.absent(),
+    Value<double?> actualRunning = const Value.absent(),
     Value<String?> sets = const Value.absent(),
     Value<String?> note = const Value.absent(),
     Value<SessionStatus?> statusOverride = const Value.absent(),
@@ -1294,6 +1426,12 @@ class Session extends DataClass implements Insertable<Session> {
     actualContinuous: actualContinuous.present
         ? actualContinuous.value
         : this.actualContinuous,
+    targetRunning: targetRunning.present
+        ? targetRunning.value
+        : this.targetRunning,
+    actualRunning: actualRunning.present
+        ? actualRunning.value
+        : this.actualRunning,
     sets: sets.present ? sets.value : this.sets,
     note: note.present ? note.value : this.note,
     statusOverride: statusOverride.present
@@ -1319,6 +1457,12 @@ class Session extends DataClass implements Insertable<Session> {
       actualContinuous: data.actualContinuous.present
           ? data.actualContinuous.value
           : this.actualContinuous,
+      targetRunning: data.targetRunning.present
+          ? data.targetRunning.value
+          : this.targetRunning,
+      actualRunning: data.actualRunning.present
+          ? data.actualRunning.value
+          : this.actualRunning,
       sets: data.sets.present ? data.sets.value : this.sets,
       note: data.note.present ? data.note.value : this.note,
       statusOverride: data.statusOverride.present
@@ -1337,6 +1481,8 @@ class Session extends DataClass implements Insertable<Session> {
           ..write('targetContinuous: $targetContinuous, ')
           ..write('actualTotal: $actualTotal, ')
           ..write('actualContinuous: $actualContinuous, ')
+          ..write('targetRunning: $targetRunning, ')
+          ..write('actualRunning: $actualRunning, ')
           ..write('sets: $sets, ')
           ..write('note: $note, ')
           ..write('statusOverride: $statusOverride')
@@ -1353,6 +1499,8 @@ class Session extends DataClass implements Insertable<Session> {
     targetContinuous,
     actualTotal,
     actualContinuous,
+    targetRunning,
+    actualRunning,
     sets,
     note,
     statusOverride,
@@ -1368,6 +1516,8 @@ class Session extends DataClass implements Insertable<Session> {
           other.targetContinuous == this.targetContinuous &&
           other.actualTotal == this.actualTotal &&
           other.actualContinuous == this.actualContinuous &&
+          other.targetRunning == this.targetRunning &&
+          other.actualRunning == this.actualRunning &&
           other.sets == this.sets &&
           other.note == this.note &&
           other.statusOverride == this.statusOverride);
@@ -1381,6 +1531,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
   final Value<double?> targetContinuous;
   final Value<double?> actualTotal;
   final Value<double?> actualContinuous;
+  final Value<double?> targetRunning;
+  final Value<double?> actualRunning;
   final Value<String?> sets;
   final Value<String?> note;
   final Value<SessionStatus?> statusOverride;
@@ -1392,6 +1544,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.targetContinuous = const Value.absent(),
     this.actualTotal = const Value.absent(),
     this.actualContinuous = const Value.absent(),
+    this.targetRunning = const Value.absent(),
+    this.actualRunning = const Value.absent(),
     this.sets = const Value.absent(),
     this.note = const Value.absent(),
     this.statusOverride = const Value.absent(),
@@ -1404,6 +1558,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.targetContinuous = const Value.absent(),
     this.actualTotal = const Value.absent(),
     this.actualContinuous = const Value.absent(),
+    this.targetRunning = const Value.absent(),
+    this.actualRunning = const Value.absent(),
     this.sets = const Value.absent(),
     this.note = const Value.absent(),
     this.statusOverride = const Value.absent(),
@@ -1417,6 +1573,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Expression<double>? targetContinuous,
     Expression<double>? actualTotal,
     Expression<double>? actualContinuous,
+    Expression<double>? targetRunning,
+    Expression<double>? actualRunning,
     Expression<String>? sets,
     Expression<String>? note,
     Expression<int>? statusOverride,
@@ -1429,6 +1587,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       if (targetContinuous != null) 'target_continuous': targetContinuous,
       if (actualTotal != null) 'actual_total': actualTotal,
       if (actualContinuous != null) 'actual_continuous': actualContinuous,
+      if (targetRunning != null) 'target_running': targetRunning,
+      if (actualRunning != null) 'actual_running': actualRunning,
       if (sets != null) 'sets': sets,
       if (note != null) 'note': note,
       if (statusOverride != null) 'status_override': statusOverride,
@@ -1443,6 +1603,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Value<double?>? targetContinuous,
     Value<double?>? actualTotal,
     Value<double?>? actualContinuous,
+    Value<double?>? targetRunning,
+    Value<double?>? actualRunning,
     Value<String?>? sets,
     Value<String?>? note,
     Value<SessionStatus?>? statusOverride,
@@ -1455,6 +1617,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       targetContinuous: targetContinuous ?? this.targetContinuous,
       actualTotal: actualTotal ?? this.actualTotal,
       actualContinuous: actualContinuous ?? this.actualContinuous,
+      targetRunning: targetRunning ?? this.targetRunning,
+      actualRunning: actualRunning ?? this.actualRunning,
       sets: sets ?? this.sets,
       note: note ?? this.note,
       statusOverride: statusOverride ?? this.statusOverride,
@@ -1485,6 +1649,12 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     if (actualContinuous.present) {
       map['actual_continuous'] = Variable<double>(actualContinuous.value);
     }
+    if (targetRunning.present) {
+      map['target_running'] = Variable<double>(targetRunning.value);
+    }
+    if (actualRunning.present) {
+      map['actual_running'] = Variable<double>(actualRunning.value);
+    }
     if (sets.present) {
       map['sets'] = Variable<String>(sets.value);
     }
@@ -1509,6 +1679,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           ..write('targetContinuous: $targetContinuous, ')
           ..write('actualTotal: $actualTotal, ')
           ..write('actualContinuous: $actualContinuous, ')
+          ..write('targetRunning: $targetRunning, ')
+          ..write('actualRunning: $actualRunning, ')
           ..write('sets: $sets, ')
           ..write('note: $note, ')
           ..write('statusOverride: $statusOverride')
@@ -1802,6 +1974,7 @@ typedef $$ExercisesTableCreateCompanionBuilder = ExercisesCompanion Function({
   required String unit,
   required double goalTotal,
   required double goalContinuous,
+  Value<double?> goalRunning,
   required String deadline,
 });
 typedef $$ExercisesTableUpdateCompanionBuilder = ExercisesCompanion Function({
@@ -1810,6 +1983,7 @@ typedef $$ExercisesTableUpdateCompanionBuilder = ExercisesCompanion Function({
   Value<String> unit,
   Value<double> goalTotal,
   Value<double> goalContinuous,
+  Value<double?> goalRunning,
   Value<String> deadline,
 });
 
@@ -1886,6 +2060,11 @@ class $$ExercisesTableFilterComposer
 
   ColumnFilters<double> get goalContinuous => $composableBuilder(
     column: $table.goalContinuous,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get goalRunning => $composableBuilder(
+    column: $table.goalRunning,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1979,6 +2158,11 @@ class $$ExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get goalRunning => $composableBuilder(
+    column: $table.goalRunning,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get deadline => $composableBuilder(
     column: $table.deadline,
     builder: (column) => ColumnOrderings(column),
@@ -2008,6 +2192,11 @@ class $$ExercisesTableAnnotationComposer
 
   GeneratedColumn<double> get goalContinuous => $composableBuilder(
     column: $table.goalContinuous,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get goalRunning => $composableBuilder(
+    column: $table.goalRunning,
     builder: (column) => column,
   );
 
@@ -2098,6 +2287,7 @@ class $$ExercisesTableTableManager
                 Value<String> unit = const Value.absent(),
                 Value<double> goalTotal = const Value.absent(),
                 Value<double> goalContinuous = const Value.absent(),
+                Value<double?> goalRunning = const Value.absent(),
                 Value<String> deadline = const Value.absent(),
               }) => ExercisesCompanion(
                 id: id,
@@ -2105,6 +2295,7 @@ class $$ExercisesTableTableManager
                 unit: unit,
                 goalTotal: goalTotal,
                 goalContinuous: goalContinuous,
+                goalRunning: goalRunning,
                 deadline: deadline,
               ),
           createCompanionCallback:
@@ -2114,6 +2305,7 @@ class $$ExercisesTableTableManager
                 required String unit,
                 required double goalTotal,
                 required double goalContinuous,
+                Value<double?> goalRunning = const Value.absent(),
                 required String deadline,
               }) => ExercisesCompanion.insert(
                 id: id,
@@ -2121,6 +2313,7 @@ class $$ExercisesTableTableManager
                 unit: unit,
                 goalTotal: goalTotal,
                 goalContinuous: goalContinuous,
+                goalRunning: goalRunning,
                 deadline: deadline,
               ),
           withReferenceMapper: (p0) => p0
@@ -2570,6 +2763,8 @@ typedef $$SessionsTableCreateCompanionBuilder = SessionsCompanion Function({
   Value<double?> targetContinuous,
   Value<double?> actualTotal,
   Value<double?> actualContinuous,
+  Value<double?> targetRunning,
+  Value<double?> actualRunning,
   Value<String?> sets,
   Value<String?> note,
   Value<SessionStatus?> statusOverride,
@@ -2582,6 +2777,8 @@ typedef $$SessionsTableUpdateCompanionBuilder = SessionsCompanion Function({
   Value<double?> targetContinuous,
   Value<double?> actualTotal,
   Value<double?> actualContinuous,
+  Value<double?> targetRunning,
+  Value<double?> actualRunning,
   Value<String?> sets,
   Value<String?> note,
   Value<SessionStatus?> statusOverride,
@@ -2645,6 +2842,16 @@ class $$SessionsTableFilterComposer
 
   ColumnFilters<double> get actualContinuous => $composableBuilder(
     column: $table.actualContinuous,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get targetRunning => $composableBuilder(
+    column: $table.targetRunning,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get actualRunning => $composableBuilder(
+    column: $table.actualRunning,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2727,6 +2934,16 @@ class $$SessionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get targetRunning => $composableBuilder(
+    column: $table.targetRunning,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get actualRunning => $composableBuilder(
+    column: $table.actualRunning,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get sets => $composableBuilder(
     column: $table.sets,
     builder: (column) => ColumnOrderings(column),
@@ -2801,6 +3018,16 @@ class $$SessionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get targetRunning => $composableBuilder(
+    column: $table.targetRunning,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get actualRunning => $composableBuilder(
+    column: $table.actualRunning,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get sets =>
       $composableBuilder(column: $table.sets, builder: (column) => column);
 
@@ -2872,6 +3099,8 @@ class $$SessionsTableTableManager
                 Value<double?> targetContinuous = const Value.absent(),
                 Value<double?> actualTotal = const Value.absent(),
                 Value<double?> actualContinuous = const Value.absent(),
+                Value<double?> targetRunning = const Value.absent(),
+                Value<double?> actualRunning = const Value.absent(),
                 Value<String?> sets = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<SessionStatus?> statusOverride = const Value.absent(),
@@ -2883,6 +3112,8 @@ class $$SessionsTableTableManager
                 targetContinuous: targetContinuous,
                 actualTotal: actualTotal,
                 actualContinuous: actualContinuous,
+                targetRunning: targetRunning,
+                actualRunning: actualRunning,
                 sets: sets,
                 note: note,
                 statusOverride: statusOverride,
@@ -2896,6 +3127,8 @@ class $$SessionsTableTableManager
                 Value<double?> targetContinuous = const Value.absent(),
                 Value<double?> actualTotal = const Value.absent(),
                 Value<double?> actualContinuous = const Value.absent(),
+                Value<double?> targetRunning = const Value.absent(),
+                Value<double?> actualRunning = const Value.absent(),
                 Value<String?> sets = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<SessionStatus?> statusOverride = const Value.absent(),
@@ -2907,6 +3140,8 @@ class $$SessionsTableTableManager
                 targetContinuous: targetContinuous,
                 actualTotal: actualTotal,
                 actualContinuous: actualContinuous,
+                targetRunning: targetRunning,
+                actualRunning: actualRunning,
                 sets: sets,
                 note: note,
                 statusOverride: statusOverride,

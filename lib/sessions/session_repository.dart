@@ -36,14 +36,17 @@ class SessionRepository {
     return query.getSingleOrNull();
   }
 
-  /// Sets both targets for one day. Passing null clears that target.
+  /// Sets the targets for one day. Passing null clears that target.
+  /// [running] only applies to exercises with a running goal.
   Future<void> setTargets(
       int exerciseId,
       DateTime day, {
         double? total,
         double? continuous,
+        double? running,
       }) =>
-      setTargetsOn(exerciseId, [day], total: total, continuous: continuous);
+      setTargetsOn(exerciseId, [day],
+          total: total, continuous: continuous, running: running);
 
   /// Sets the same targets on several days at once, e.g. the next 3 runs.
   Future<void> setTargetsOn(
@@ -51,6 +54,7 @@ class SessionRepository {
       List<DateTime> days, {
         double? total,
         double? continuous,
+        double? running,
       }) {
     return _db.transaction(() async {
       for (final day in days) {
@@ -60,6 +64,7 @@ class SessionRepository {
           SessionsCompanion(
             targetTotal: Value(total),
             targetContinuous: Value(continuous),
+            targetRunning: Value(running),
           ),
         );
       }
@@ -72,6 +77,7 @@ class SessionRepository {
       DateTime day, {
         double? total,
         double? continuous,
+        double? running,
         List<num>? sets,
         String? note,
       }) =>
@@ -81,6 +87,7 @@ class SessionRepository {
         SessionsCompanion(
           actualTotal: Value(total),
           actualContinuous: Value(continuous),
+          actualRunning: Value(running),
           sets: Value(sets == null ? null : jsonEncode(sets)),
           note: Value(note),
         ),
@@ -93,6 +100,7 @@ class SessionRepository {
     const SessionsCompanion(
       actualTotal: Value(null),
       actualContinuous: Value(null),
+      actualRunning: Value(null),
       sets: Value(null),
       note: Value(null),
       statusOverride: Value(null),
@@ -122,7 +130,9 @@ class SessionRepository {
       ..where((s) =>
       s.exerciseId.equals(exerciseId) &
       s.date.isSmallerThanValue(dayKey(before)) &
-      (s.actualTotal.isNotNull() | s.actualContinuous.isNotNull()))
+      (s.actualTotal.isNotNull() |
+      s.actualContinuous.isNotNull() |
+      s.actualRunning.isNotNull()))
       ..orderBy([(s) => OrderingTerm.desc(s.date)])
       ..limit(limit);
     return query.get();
