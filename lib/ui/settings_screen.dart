@@ -9,6 +9,7 @@ import '../exercises/exercises_state.dart';
 import '../schedule/schedule_state.dart';
 import 'widgets/schedule_rule_editor.dart';
 import 'widgets/session_tile.dart';
+import 'widgets/sheet_body.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -217,9 +218,7 @@ class _GoalSheetState extends ConsumerState<_GoalSheet> {
     final unit = widget.exercise.unit;
     final keyboard = TextInputType.numberWithOptions(decimal: unit == 'km');
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+    return SheetBody(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

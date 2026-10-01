@@ -9,6 +9,7 @@ import '../../sessions/session_repository.dart';
 import '../../sessions/sessions_state.dart';
 import '../../sessions/target_suggestion.dart';
 import 'session_tile.dart';
+import 'sheet_body.dart';
 
 Future<void> showLogSessionSheet(
     BuildContext context, {
@@ -244,78 +245,73 @@ class _LogSessionSheetState extends ConsumerState<LogSessionSheet> {
     final unit = widget.exercise.unit;
     final usingSets = _usesSets && _sets.text.trim().isNotEmpty;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.exercise.name, style: theme.textTheme.headlineSmall),
-            Text(formatLongDate(widget.date),
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 20),
-            _SectionLabel('Target', note: _suggested ? 'Suggested' : null),
-            _pairFields(_targetTotal, _targetContinuous, unit),
-            const SizedBox(height: 20),
-            const _SectionLabel('What you did'),
-            if (_usesSets) ...[
-              TextField(
-                controller: _sets,
-                decoration: InputDecoration(
-                  labelText: 'Sets',
-                  hintText: 'e.g. 40, 30, 25',
-                  helperText: _setsPreview() ?? 'Or enter total and continuous',
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (!usingSets) ...[
-              _pairFields(_actualTotal, _actualContinuous, unit),
-              const SizedBox(height: 12),
-            ],
+    return SheetBody(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(widget.exercise.name, style: theme.textTheme.headlineSmall),
+          Text(formatLongDate(widget.date),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 20),
+          _SectionLabel('Target', note: _suggested ? 'Suggested' : null),
+          _pairFields(_targetTotal, _targetContinuous, unit),
+          const SizedBox(height: 20),
+          const _SectionLabel('What you did'),
+          if (_usesSets) ...[
             TextField(
-              controller: _note,
-              minLines: 1,
-              maxLines: 3,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'Note'),
+              controller: _sets,
+              decoration: InputDecoration(
+                labelText: 'Sets',
+                hintText: 'e.g. 40, 30, 25',
+                helperText: _setsPreview() ?? 'Or enter total and continuous',
+              ),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<SessionStatus?>(
-              initialValue: _override,
-              decoration: const InputDecoration(labelText: 'Status'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Automatic')),
-                for (final s in SessionStatus.values)
-                  DropdownMenuItem(value: s, child: Text(statusLabel(s))),
-              ],
-              onChanged: (v) => setState(() => _override = v),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!,
-                  style: TextStyle(color: theme.colorScheme.error)),
-            ],
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                if (_wasLogged)
-                  TextButton(
-                    onPressed: _saving ? null : _clear,
-                    child: const Text('Clear log'),
-                  ),
-                const Spacer(),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
           ],
-        ),
+          if (!usingSets) ...[
+            _pairFields(_actualTotal, _actualContinuous, unit),
+            const SizedBox(height: 12),
+          ],
+          TextField(
+            controller: _note,
+            minLines: 1,
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'Note'),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<SessionStatus?>(
+            initialValue: _override,
+            decoration: const InputDecoration(labelText: 'Status'),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Automatic')),
+              for (final s in SessionStatus.values)
+                DropdownMenuItem(value: s, child: Text(statusLabel(s))),
+            ],
+            onChanged: (v) => setState(() => _override = v),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+          ],
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              if (_wasLogged)
+                TextButton(
+                  onPressed: _saving ? null : _clear,
+                  child: const Text('Clear log'),
+                ),
+              const Spacer(),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

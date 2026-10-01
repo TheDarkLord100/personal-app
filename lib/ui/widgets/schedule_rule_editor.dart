@@ -7,6 +7,7 @@ import '../../database/app_database.dart';
 import '../../database/tables.dart';
 import '../../schedule/schedule_engine.dart';
 import '../../schedule/schedule_state.dart';
+import 'sheet_body.dart';
 
 /// e.g. "Every 2 days, from 01/10/2026" or "Mon, Wed, Fri, from 05/10/2026"
 String describeRule(ScheduleRule rule) {
@@ -197,132 +198,128 @@ class _ScheduleRuleEditorState extends ConsumerState<ScheduleRuleEditor> {
         ? const <DateTime>[]
         : nextOccurrences([_candidate()], widget.exercise.id, _from, 5);
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.exercise.name, style: theme.textTheme.headlineSmall),
-            Text(_old == null ? 'New schedule' : 'Edit schedule', style: muted),
-            const SizedBox(height: 20),
-            SegmentedButton<ScheduleType>(
-              segments: const [
-                ButtonSegment(
-                  value: ScheduleType.everyNDays,
-                  label: Text('Every N days'),
-                ),
-                ButtonSegment(
-                  value: ScheduleType.weekdays,
-                  label: Text('Weekdays'),
-                ),
-              ],
-              selected: {_type},
-              onSelectionChanged: (s) => setState(() => _type = s.first),
-            ),
-            const SizedBox(height: 16),
-            if (_type == ScheduleType.everyNDays)
-              Row(
-                children: [
-                  Text('Repeat', style: theme.textTheme.bodyLarge),
-                  const Spacer(),
-                  IconButton.outlined(
-                    onPressed: _interval > 1
-                        ? () => setState(() => _interval--)
-                        : null,
-                    icon: const Icon(Icons.remove),
-                  ),
-                  SizedBox(
-                    width: 96,
-                    child: Text(
-                      _interval == 1 ? 'Every day' : 'Every $_interval days',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.titleSmall,
-                    ),
-                  ),
-                  IconButton.outlined(
-                    onPressed: _interval < 14
-                        ? () => setState(() => _interval++)
-                        : null,
-                    icon: const Icon(Icons.add),
-                  ),
-                ],
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (var w = DateTime.monday; w <= DateTime.sunday; w++)
-                    FilterChip(
-                      label: Text(weekdayShort(w)),
-                      selected: _weekdays.contains(w),
-                      onSelected: (on) => setState(() {
-                        if (on) {
-                          _weekdays.add(w);
-                        } else {
-                          _weekdays.remove(w);
-                        }
-                      }),
-                    ),
-                ],
+    return SheetBody(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(widget.exercise.name, style: theme.textTheme.headlineSmall),
+          Text(_old == null ? 'New schedule' : 'Edit schedule', style: muted),
+          const SizedBox(height: 20),
+          SegmentedButton<ScheduleType>(
+            segments: const [
+              ButtonSegment(
+                value: ScheduleType.everyNDays,
+                label: Text('Every N days'),
               ),
-            const SizedBox(height: 8),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.event_outlined),
-              title: Text(_old == null ? 'Starts on' : 'Changes apply from'),
-              subtitle: Text(formatLongDate(_from)),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _pickDate,
-            ),
-            if (_type == ScheduleType.everyNDays)
-              Text(
-                'Sessions repeat counting from this date. To alternate with '
-                    'another exercise, start one of them a day later.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ButtonSegment(
+                value: ScheduleType.weekdays,
+                label: Text('Weekdays'),
               ),
-            const SizedBox(height: 16),
-            Text('Next sessions', style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            if (upcoming.isEmpty)
-              Text('None', style: muted)
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final d in upcoming)
-                    Chip(
-                      label: Text(formatShortDate(d)),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                ],
-              ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             ],
-            const SizedBox(height: 20),
+            selected: {_type},
+            onSelectionChanged: (s) => setState(() => _type = s.first),
+          ),
+          const SizedBox(height: 16),
+          if (_type == ScheduleType.everyNDays)
             Row(
               children: [
-                if (_old != null)
-                  TextButton(
-                    onPressed: _saving ? null : _stop,
-                    child: const Text('Stop schedule'),
-                  ),
+                Text('Repeat', style: theme.textTheme.bodyLarge),
                 const Spacer(),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: const Text('Save'),
+                IconButton.outlined(
+                  onPressed: _interval > 1
+                      ? () => setState(() => _interval--)
+                      : null,
+                  icon: const Icon(Icons.remove),
+                ),
+                SizedBox(
+                  width: 96,
+                  child: Text(
+                    _interval == 1 ? 'Every day' : 'Every $_interval days',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                IconButton.outlined(
+                  onPressed: _interval < 14
+                      ? () => setState(() => _interval++)
+                      : null,
+                  icon: const Icon(Icons.add),
                 ),
               ],
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (var w = DateTime.monday; w <= DateTime.sunday; w++)
+                  FilterChip(
+                    label: Text(weekdayShort(w)),
+                    selected: _weekdays.contains(w),
+                    onSelected: (on) => setState(() {
+                      if (on) {
+                        _weekdays.add(w);
+                      } else {
+                        _weekdays.remove(w);
+                      }
+                    }),
+                  ),
+              ],
             ),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.event_outlined),
+            title: Text(_old == null ? 'Starts on' : 'Changes apply from'),
+            subtitle: Text(formatLongDate(_from)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _pickDate,
+          ),
+          if (_type == ScheduleType.everyNDays)
+            Text(
+              'Sessions repeat counting from this date. To alternate with '
+                  'another exercise, start one of them a day later.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          const SizedBox(height: 16),
+          Text('Next sessions', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          if (upcoming.isEmpty)
+            Text('None', style: muted)
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final d in upcoming)
+                  Chip(
+                    label: Text(formatShortDate(d)),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
           ],
-        ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              if (_old != null)
+                TextButton(
+                  onPressed: _saving ? null : _stop,
+                  child: const Text('Stop schedule'),
+                ),
+              const Spacer(),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

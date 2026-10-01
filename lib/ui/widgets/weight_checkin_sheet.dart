@@ -5,6 +5,7 @@ import '../../core/dates.dart';
 import '../../core/format.dart';
 import '../../database/app_database.dart';
 import '../../weight/weight_state.dart';
+import 'sheet_body.dart';
 
 Future<void> showWeightCheckinSheet(
     BuildContext context, {
@@ -72,9 +73,7 @@ class _WeightCheckinSheetState extends ConsumerState<WeightCheckinSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+    return SheetBody(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
