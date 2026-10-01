@@ -167,9 +167,10 @@ class SessionActions {
       DateTime day, {
         double? total,
         double? continuous,
+        double? running,
       }) =>
       _sessions.setTargets(exerciseId, day,
-          total: total, continuous: continuous);
+          total: total, continuous: continuous, running: running);
 
   /// Sets targets on the next [count] scheduled days from [from], skipping
   /// days that are already logged. Returns the days it set.
@@ -179,6 +180,7 @@ class SessionActions {
     required int count,
     double? total,
     double? continuous,
+    double? running,
   }) async {
     final rules = await _rules.getAll();
     final picked = <DateTime>[];
@@ -197,7 +199,7 @@ class SessionActions {
     }
 
     await _sessions.setTargetsOn(exerciseId, picked,
-        total: total, continuous: continuous);
+        total: total, continuous: continuous, running: running);
     return picked;
   }
 
@@ -207,6 +209,7 @@ class SessionActions {
       DateTime day, {
         double? total,
         double? continuous,
+        double? running,
         List<num>? sets,
         String? note,
       }) {
@@ -219,6 +222,7 @@ class SessionActions {
       day,
       total: fromSets?.total ?? total,
       continuous: fromSets?.continuous ?? continuous,
+      running: running,
       sets: hasSets ? sets : null,
       note: (trimmedNote == null || trimmedNote.isEmpty) ? null : trimmedNote,
     );
@@ -235,7 +239,10 @@ class SessionActions {
       _sessions.setStatusOverride(exerciseId, day, status);
 
   bool _isLogged(Session? s) =>
-      s != null && (s.actualTotal != null || s.actualContinuous != null);
+      s != null &&
+          (s.actualTotal != null ||
+              s.actualContinuous != null ||
+              s.actualRunning != null);
 }
 
 final sessionActionsProvider = Provider<SessionActions>(

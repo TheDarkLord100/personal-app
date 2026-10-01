@@ -3,10 +3,13 @@ import 'dart:math' as math;
 import '../database/app_database.dart';
 
 class TargetSuggestion {
-  const TargetSuggestion({this.total, this.continuous});
+  const TargetSuggestion({this.total, this.continuous, this.running});
 
   final double? total;
   final double? continuous;
+
+  /// Only for exercises with a running goal.
+  final double? running;
 }
 
 /// Smallest meaningful change for a unit: 0.1 km, or 1 rep.
@@ -41,15 +44,27 @@ TargetSuggestion? suggestTarget({
     remaining: remainingSessions,
     increment: increment,
   );
+  var running = exercise.goalRunning == null
+      ? null
+      : _nextValue(
+          target: last.targetRunning,
+          actual: last.actualRunning,
+          goal: exercise.goalRunning!,
+          remaining: remainingSessions,
+          increment: increment,
+        );
 
-  if (total == null && continuous == null) return null;
+  if (total == null && continuous == null && running == null) return null;
 
-  // A continuous effort is part of the total, so the total can't be smaller.
-  if (total != null && continuous != null && continuous > total) {
-    total = continuous;
+  // continuous <= running <= total: a continuous effort is part of the
+  // running, which is part of the total. Raise the bigger ones to fit.
+  if (running != null && continuous != null && continuous > running) {
+    running = continuous;
   }
+  final floor = running ?? continuous;
+  if (total != null && floor != null && floor > total) total = floor;
 
-  return TargetSuggestion(total: total, continuous: continuous);
+  return TargetSuggestion(total: total, continuous: continuous, running: running);
 }
 
 double? _nextValue({

@@ -20,12 +20,25 @@ const pushUpsEx = Exercise(
   deadline: '2026-12-31',
 );
 
+/// Running as seeded from schema 2: total is walking + running.
+const runningWithDistanceEx = Exercise(
+  id: 1,
+  name: 'Running',
+  unit: 'km',
+  goalTotal: 8,
+  goalContinuous: 2,
+  goalRunning: 5,
+  deadline: '2026-12-31',
+);
+
 Session logged({
   int exerciseId = 1,
   double? targetTotal,
   double? targetContinuous,
+  double? targetRunning,
   double? actualTotal,
   double? actualContinuous,
+  double? actualRunning,
 }) =>
     Session(
       id: 1,
@@ -33,8 +46,10 @@ Session logged({
       date: '2026-10-05',
       targetTotal: targetTotal,
       targetContinuous: targetContinuous,
+      targetRunning: targetRunning,
       actualTotal: actualTotal,
       actualContinuous: actualContinuous,
+      actualRunning: actualRunning,
     );
 
 void main() {
@@ -128,5 +143,48 @@ void main() {
     // Total repeats 1 (fell short). Continuous: 0.8 + 1.2 / 2 = 1.4.
     expect(s.continuous, 1.4);
     expect(s.total, 1.4);
+  });
+
+  group('running distance', () {
+    test('steps up along its own ramp to the running goal', () {
+      final s = suggestTarget(
+        exercise: runningWithDistanceEx,
+        recentLogged: [
+          logged(
+            targetTotal: 4, targetRunning: 2, targetContinuous: 1,
+            actualTotal: 4, actualRunning: 2, actualContinuous: 1,
+          ),
+        ],
+        remainingSessions: 10,
+      )!;
+      // Total: 4 + 4/10 = 4.4. Running: 2 + 3/10 = 2.3. Continuous: 1.1.
+      expect((s.total, s.running, s.continuous), (4.4, 2.3, 1.1));
+    });
+
+    test('running is raised to cover continuous, and total to cover running',
+        () {
+      final s = suggestTarget(
+        exercise: runningWithDistanceEx,
+        // Fell short on total and running (they repeat); continuous steps up.
+        recentLogged: [
+          logged(
+            targetTotal: 1.5, targetRunning: 1.5,
+            actualTotal: 1.2, actualRunning: 1.2, actualContinuous: 1.2,
+          ),
+        ],
+        remainingSessions: 2,
+      )!;
+      // Continuous: 1.2 + 0.8/2 = 1.6, above the repeated 1.5 for both.
+      expect((s.total, s.running, s.continuous), (1.6, 1.6, 1.6));
+    });
+
+    test('exercises without a running goal never get a running suggestion', () {
+      final s = suggestTarget(
+        exercise: pushUpsEx,
+        recentLogged: [logged(exerciseId: 3, actualTotal: 50, actualRunning: 9)],
+        remainingSessions: 10,
+      )!;
+      expect(s.running, isNull);
+    });
   });
 }

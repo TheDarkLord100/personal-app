@@ -11,13 +11,20 @@ const runningEx = Exercise(
   deadline: '2026-12-31',
 );
 
-Session run(String date, {double? total, double? continuous}) => Session(
-  id: 0,
-  exerciseId: 1,
-  date: date,
-  actualTotal: total,
-  actualContinuous: continuous,
-);
+Session run(
+  String date, {
+  double? total,
+  double? continuous,
+  double? running,
+}) =>
+    Session(
+      id: 0,
+      exerciseId: 1,
+      date: date,
+      actualTotal: total,
+      actualContinuous: continuous,
+      actualRunning: running,
+    );
 
 WeightEntry weight(String date, double kg) => WeightEntry(date: date, kg: kg);
 
@@ -99,6 +106,33 @@ void main() {
         today: DateTime(2026, 10, 4),
       )!;
       expect(pace.kgPerWeekRecent, isNull);
+    });
+  });
+
+  group('running distance', () {
+    const withDistance = Exercise(
+      id: 1, name: 'Running', unit: 'km',
+      goalTotal: 8, goalContinuous: 2, goalRunning: 5,
+      deadline: '2026-12-31',
+    );
+
+    test('has its own best and fraction of the running goal', () {
+      final p = progressFor(
+        withDistance,
+        [
+          run('2026-10-01', total: 3, running: 1.5),
+          run('2026-10-05', total: 3.5, running: 2.5),
+        ],
+        DateTime(2026, 10, 10),
+      );
+      expect(p.running!.goal, 5);
+      expect(p.running!.best, 2.5);
+      expect(p.running!.fraction, 0.5);
+    });
+
+    test('is null for exercises without a running goal', () {
+      expect(progressFor(runningEx, const [], DateTime(2026, 10, 10)).running,
+          isNull);
     });
   });
 }

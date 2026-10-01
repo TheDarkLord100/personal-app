@@ -33,10 +33,10 @@ void main() {
       );
 
       expect(lines(csv), [
-        'Date,Exercise,Target total,Target continuous,Actual total,'
-            'Actual continuous,Sets,Status,Note',
-        '03/10/2026,Running,2,1,2.5,1,,Overachieved,',
-        '05/10/2026,Squats,50,,,,,Missed,',
+        'Date,Exercise,Target total,Target running,Target continuous,'
+            'Actual total,Actual running,Actual continuous,Sets,Status,Note',
+        '03/10/2026,Running,2,,1,2.5,,1,,Overachieved,',
+        '05/10/2026,Squats,50,,,,,,,Missed,',
         '',
       ]);
     });
@@ -55,7 +55,8 @@ void main() {
         today,
       );
 
-      expect(lines(csv)[1], '03/10/2026,Squats,200,,95,40,"40, 30, 25",Done,');
+      expect(lines(csv)[1],
+          '03/10/2026,Squats,200,,,95,,40,"40, 30, 25",Done,');
     });
 
     test('a future day with only a target is upcoming', () {
@@ -64,7 +65,22 @@ void main() {
         [runningEx],
         today,
       );
-      expect(lines(csv)[1], '12/10/2026,Running,3,,,,,Upcoming,');
+      expect(lines(csv)[1], '12/10/2026,Running,3,,,,,,,Upcoming,');
+    });
+
+    test('running distance has its own columns', () {
+      final csv = sessionsCsv(
+        const [
+          Session(
+            id: 1, exerciseId: 1, date: '2026-10-03',
+            targetTotal: 6, targetRunning: 4, targetContinuous: 1.5,
+            actualTotal: 6.2, actualRunning: 4, actualContinuous: 1.5,
+          ),
+        ],
+        [runningEx],
+        today,
+      );
+      expect(lines(csv)[1], '03/10/2026,Running,6,4,1.5,6.2,4,1.5,,Overachieved,');
     });
   });
 

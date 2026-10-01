@@ -122,6 +122,23 @@ void main() {
       expect(logged!.targetTotal, isNull); // Left untouched.
     });
 
+    test('setTargetsForNext treats a running-only log as logged, and sets '
+        'running targets', () async {
+      await container.read(scheduleActionsProvider).addEveryNDays(
+          exerciseId: running, intervalDays: 2, start: d(10, 1));
+      final actions = container.read(sessionActionsProvider);
+      await actions.log(running, d(10, 1), running: 2);
+
+      final days = await actions.setTargetsForNext(
+          exerciseId: running, from: d(10, 1), count: 1,
+          total: 6, running: 4, continuous: 1.5);
+
+      expect(days, [d(10, 3)]);
+      final s = (await SessionRepository(db).find(running, d(10, 3)))!;
+      expect((s.targetTotal, s.targetRunning, s.targetContinuous),
+          (6.0, 4.0, 1.5));
+    });
+
     test('log derives totals from sets and trims the note', () async {
       final actions = container.read(sessionActionsProvider);
       await actions.log(squats, d(10, 2), sets: [40, 30, 25], note: '  ok  ');

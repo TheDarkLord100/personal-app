@@ -24,10 +24,17 @@ class MetricProgress {
 }
 
 class ExerciseProgress {
-  const ExerciseProgress({required this.total, required this.continuous});
+  const ExerciseProgress({
+    required this.total,
+    required this.continuous,
+    this.running,
+  });
 
   final MetricProgress total;
   final MetricProgress continuous;
+
+  /// Null for exercises without a running goal.
+  final MetricProgress? running;
 }
 
 ExerciseProgress progressFor(
@@ -55,6 +62,14 @@ ExerciseProgress progressFor(
       deadline,
       today,
     ),
+    running: exercise.goalRunning == null
+        ? null
+        : _metric(
+            own.map((s) => (s.date, s.actualRunning)),
+            exercise.goalRunning!,
+            deadline,
+            today,
+          ),
   );
 }
 
